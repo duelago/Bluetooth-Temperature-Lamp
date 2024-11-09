@@ -5,7 +5,7 @@ NimBLEScan* pBLEScan;
 const int scanTime = 5;  // Scan duration in seconds
 
 // Target MAC address of the specific device
-const std::string targetMacAddress = "34:ec:b6:65:18:3e";
+const std::string targetMacAddress = "34:ec:b6:65:18:3e";    //38:1f:8d:97:bd:5d Termometern med display
 
 // Helper function to decode a little-endian 16-bit unsigned integer
 uint16_t decodeLittleEndianU16(uint8_t lowByte, uint8_t highByte) {
