@@ -147,11 +147,23 @@ void setup() {
     server.begin();
     displayCenteredText("Starting...", 2, 15);
 }
+float lastTemperature = -999.0;  // Initialize with an impossible temperature value
 
 void loop() {
     ElegantOTA.loop();
     server.handleClient();
     pBLEScan->start(scanTime, false);
     Serial.println("Scanning...");
+
+    // Check if the temperature has changed
+    if (temperature != lastTemperature) {
+        // Update the display and LED only if the temperature has changed
+        lastTemperature = temperature;
+
+        // Update the OLED display and LED
+        displayCenteredText(String(round(temperature)), 2, 15);
+        setLEDColor(round(temperature));
+    }
+
     delay(30000); // Scan every 30 seconds
 }
