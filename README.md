@@ -5,14 +5,14 @@ Lampan kommunicerar med en billig blåtandstermometer som vi installerar alterna
 
 Själva hjärnan i operationen är en ESP32
 
-Detta behövs:
-ESP32 38 pin- Testad med denna modellen från AliExpress https://www.aliexpress.com/item/1005006900641832.html
-Blåtandstermometer - https://www.aliexpress.com/item/1005006458594110.html
-LED  - https://www.aliexpress.com/item/1005004950092116.html
-OLED-skärm https://www.aliexpress.com/item/32804426981.htm
-USB-to-TTL adapter (Vet inte vilken som är bra, men typ denna) https://www.aliexpress.com/item/1005004742270942.html
-Dupontkablar
-Metallsugrör från ICA eller Amazon
+Detta behövs:<br>
+ESP32 38 pin- Testad med denna modellen från AliExpress https://www.aliexpress.com/item/1005006900641832.html<p></p>
+Blåtandstermometer - https://www.aliexpress.com/item/1005006458594110.html<p></p>
+LED  - https://www.aliexpress.com/item/1005004950092116.html<p></p>
+OLED-skärm https://www.aliexpress.com/item/32804426981.htm<p></p>
+USB-to-TTL adapter (Vet inte vilken som är bra, men typ denna) https://www.aliexpress.com/item/1005004742270942.html<p></p>
+Dupontkablar<p></p>
+Metallsugrör från ICA eller Amazon<p></p>
 
 ![Screenshot 2024-11-09 at 18 48 34](https://github.com/user-attachments/assets/58aed1f7-5daf-4fa9-8259-60117b535dff)
 
@@ -25,18 +25,18 @@ Metallsugrör från ICA eller Amazon
 ![Screenshot 2024-11-09 at 18 54 38](https://github.com/user-attachments/assets/704f6198-a035-4996-8708-9e186b75ae49)
 
 
-Steg ett är att flasha firmware på vår termometer. Plocka isär den och löd fast kablar enligt denna bild. Dessa ska du sedan koppla till din USB-to-TTL adapter
-rx-tx
-tx-rx
-vbat+- 3.3v
-vbat- - ground
-rest - reset
+Steg ett är att flasha firmware på vår termometer. Plocka isär den och löd fast kablar enligt denna bild. Dessa ska du sedan koppla till din USB-to-TTL adapter<p></p>
+rx-tx<br>
+tx-rx<br>
+vbat+- 3.3v<br>
+vbat- - ground<br>
+rest - reset<p></p>
 
 ![bth01](https://github.com/user-attachments/assets/803ec53a-a5db-4e93-a42c-f810dcf24239)
-
-Följ instruktionerna här för hur du flashar
+<p></p>
+Följ instruktionerna här för hur du flashar<br>
 https://github.com/pvvx/THB2
 
-
-
+<p></p>
+---
 Börja här: https://github.com/pvvx/ATC_MiThermometer#readme
