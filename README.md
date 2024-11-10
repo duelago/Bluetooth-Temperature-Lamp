@@ -14,11 +14,11 @@ ESP32 38 pin- Testad med denna modellen från AliExpress https://www.aliexpress.
 Blåtandstermometer - https://www.aliexpress.com/item/1005006458594110.html<p></p>
 LED  - https://www.aliexpress.com/item/1005004950092116.html<p></p>
 OLED-skärm https://www.aliexpress.com/item/32804426981.html<p></p>
-USB-to-TTL adapter (Vet inte vilken som är bra, men typ denna) https://www.aliexpress.com/item/1005004742270942.html<br>
-Metallsugrör från ICA eller Amazon https://t.ly/_2JY1<br>
-1 st motstånd 100 Ohm<br>
-2 skruvar M2.5 <br>
-Krympslang till LEDen https://www.aliexpress.com/item/1005006991396293.html <br>
+USB-to-TTL adapter (Vet inte vilken som är bra, men typ denna) https://www.aliexpress.com/item/1005004742270942.html<p></p>
+Metallsugrör från ICA eller Amazon https://t.ly/_2JY1<p></p>
+1 st motstånd 100 Ohm<p></p>
+2 skruvar M2.5 <p></p>
+Krympslang till LEDen https://www.aliexpress.com/item/1005006991396293.html <p></p>
 Dupontkablar (female-female) 3st 30cm  och ett gäng 10cm https://www.aliexpress.com/item/1005005501503609.html<p></p>
 
 3D-printade detaljer i PLA<p></p>
