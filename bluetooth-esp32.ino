@@ -1,18 +1,9 @@
-#include <WiFi.h>
-#include <WiFiClientSecure.h>
+
 #include <FastLED.h>
-#include <DNSServer.h>
-#include <WebServer.h>
-#include <WiFiManager.h>
-#include <ESPmDNS.h>
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
-#include <ElegantOTA.h>
 #include <NimBLEDevice.h>
-
-char ssid[] = "";       // Leave empty to configure with WiFi Manager
-char password[] = "";   // Leave empty to configure with WiFi Manager
 
 #define OLED_RESET -1   // Use -1 for ESP32, no reset pin
 #define NUM_LEDS 1
@@ -21,32 +12,15 @@ char password[] = "";   // Leave empty to configure with WiFi Manager
 CRGB leds[NUM_LEDS];
 Adafruit_SSD1306 display(128, 64, &Wire, OLED_RESET);
 
-WebServer server(80);
+
 float temperature = 0.0;
-const std::string targetMacAddress = "34:ec:b6:65:18:3e";  // Your target device MAC address
+const std::string targetMacAddress = "34:ec:b6:65:18:3e";  // MAC-adressen till din termometer
 
 // BLE Scan settings
 NimBLEScan* pBLEScan;
 const int scanTime = 5;  // Scan duration in seconds
 
-// HTML template with placeholder for temperature
-const char* html = R"(
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Temperature Lamp</title>
-    <style>
-        body { text-align: center; font-family: Arial, sans-serif; }
-        h1 { color: #4CAF50; }
-        p { font-size: 20px; }
-    </style>
-</head>
-<body>
-    <h1>Temperature Lamp</h1>
-    <p>Current Temperature: -- °C</p>
-</body>
-</html>
-)";
+
 
 // Helper function to decode a little-endian 16-bit unsigned integer
 uint16_t decodeLittleEndianU16(uint8_t lowByte, uint8_t highByte) {
@@ -141,13 +115,7 @@ void setup() {
     FastLED.addLeds<WS2811, DATA_PIN, RGB>(leds, NUM_LEDS);
     FastLED.setBrightness(100);
 
-    WiFiManager wifiManager;
-    wifiManager.autoConnect("Temperaturlampan");
-    ElegantOTA.begin(&server);
-
-    if (!MDNS.begin("lampan")) {
-        Serial.println("Error starting mDNS");
-    }
+    
 
     NimBLEDevice::init("");
     pBLEScan = NimBLEDevice::getScan();
@@ -156,22 +124,14 @@ void setup() {
     pBLEScan->setWindow(99);
     pBLEScan->setActiveScan(true);
 
-    server.on("/", HTTP_GET, []() {
-        // Replace the placeholder "--" in the HTML with the current temperature
-        String htmlWithTemp = String(html);
-        htmlWithTemp.replace("--", String((int)round(temperature)));
-        server.send(200, "text/html", htmlWithTemp);  // Send the HTML page with the temperature
-    });
 
-    server.begin();
-    displayCenteredText("Starting...", 2, 15);
+    displayCenteredText("HEJ", 2, 15);
 }
 
 float lastTemperature = -999.0;  // Initialize with an impossible temperature value
 
 void loop() {
-    ElegantOTA.loop();
-    server.handleClient();
+ 
     pBLEScan->start(scanTime, false);
     Serial.println("Scanning...");
 
