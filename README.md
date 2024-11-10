@@ -62,7 +62,7 @@ Din COM-port heter något annat. Den får du luska reda på.
 <p></p>
 När du flashat klart, klickar du på  READ under config-taben och ta reda på termometerns MAC-adress. Denna adress klistrar du i .ino filen före du kompilerar lampans firmware
 <p></p>
-Sen är det bara att kompilera [.ino](https://github.com/duelago/bluetoothlamp/blob/main/bluetooth-esp32.ino) filen i Arduino IDE. Se till att korrekt esp32 är vald som board och att all bibliotek är installerade.
+Sen är det bara att kompilera [.ino](https://github.com/duelago/bluetoothlamp/blob/main/bluetooth-esp32.ino) filen i Arduino IDE. Se till att korrekt esp32 är vald som board och att alla bibliotek är installerade.
 <p></p>
 
 ![Screenshot 2024-11-10 at 17 43 17](https://github.com/user-attachments/assets/c31c2913-b47f-4bf1-b265-2f90f9bb2758)
