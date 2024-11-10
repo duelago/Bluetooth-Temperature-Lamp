@@ -1,7 +1,10 @@
-# Blåtandslampan
+# Blåtandstermometerlampan
 
 En bordslampa som byter färg beroende på yttertemperaturen och som även visar tempen op en liten OLED-skärm
 Lampan kommunicerar med en billig blåtandstermometer som vi installerar alternativ firmware på och placerar utomhus (i närheten).
+
+![Screenshot 2024-11-10 at 17 25 36](https://github.com/user-attachments/assets/8c8e5b70-e9b5-4cb2-bdc6-467b7a6df59c)
+
 
 ![bluetoothesp32](https://github.com/user-attachments/assets/33bab323-7351-49cc-a0c5-6bc6c0fe055e)
 
