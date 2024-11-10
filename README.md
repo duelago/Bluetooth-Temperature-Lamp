@@ -2,6 +2,7 @@
 
 En bordslampa som byter färg beroende på yttertemperaturen och som även visar tempen på en liten OLED-skärm.
 Lampan kommunicerar med en billig blåtandstermometer som vi installerar alternativ firmware på och placerar utomhus (i närheten).
+Kodat i Arduino IDE. Termometern vi ansluter till måste flashas en gång med hjälp av ett pythonscript. 
 
 ![Screenshot 2024-11-10 at 17 25 36 copy](https://github.com/user-attachments/assets/56b19ddc-1d22-4644-b5cb-de2b17a1d4d6)
 
