@@ -80,6 +80,16 @@ void setLEDColor(float roundedTemperature) {
 
 void setup() {
     Serial.begin(115200);
+
+    // Initiera Wire med alternativa I2C-pinnar
+    Wire.begin(18, 19); // SDA = GPIO 18, SCL = GPIO 19
+
+    if (!scd4x.begin(Wire)) {
+        Serial.println("Failed to initialize SCD40 sensor.");
+    } else {
+        Serial.println("SCD40 sensor initialized successfully.");
+    }
+    
     display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
     display.clearDisplay();
     FastLED.addLeds<WS2811, DATA_PIN, RGB>(leds, NUM_LEDS);
