@@ -47,5 +47,7 @@ Följ instruktionerna här för hur du flashar<br>
 https://github.com/pvvx/THB2
 
 <p></p>
----
-Börja här: https://github.com/pvvx/ATC_MiThermometer#readme
+-----
+<br>
+Mer dokumentation om blåtandsgrunkorna<br> 
+https://github.com/pvvx/ATC_MiThermometer#readme
