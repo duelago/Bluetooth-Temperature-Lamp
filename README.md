@@ -3,6 +3,10 @@
 En bordslampa som byter färg beroende på yttertemperaturen och som även visar tempen op en liten OLED-skärm
 Lampan kommunicerar med en billig blåtandstermometer som vi installerar alternativ firmware på.
 
+![bluetoothesp32](https://github.com/user-attachments/assets/33bab323-7351-49cc-a0c5-6bc6c0fe055e)
+
+
+
 Själva hjärnan i operationen är en ESP32
 
 Detta behövs:<br>
