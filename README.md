@@ -46,6 +46,11 @@ rest - reset<p></p>
 Följ instruktionerna här för hur du flashar<br>
 https://github.com/pvvx/THB2
 
+![Screenshot 2024-11-10 at 10 51 43](https://github.com/user-attachments/assets/f4c2ec4e-3faa-4bb0-8a1c-c26970b5aea2)
+<p></p>
+Klicka READ under config-taben och ta reda på termometerns MAC-adress. Denna klistrar du i .ino filen före du kompilerar lampans firmware
+
+
 <p></p>
 -----
 <br>
