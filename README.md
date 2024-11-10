@@ -44,7 +44,7 @@ Plocka isär den och löd fast kablar enligt denna bild. Dessa ska du sedan kopp
 tx-rx<br>
 vbat+- 3.3v<br>
 vbat- - ground<br>
-rest - reset</b>b><p></p>
+rest - reset</b><p></p>
 
 ![bth01](https://github.com/user-attachments/assets/803ec53a-a5db-4e93-a42c-f810dcf24239)
 <p></p>
