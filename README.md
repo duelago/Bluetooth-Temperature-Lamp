@@ -26,6 +26,7 @@ USB-to-TTL adapter (Vet inte vilken som är bra, men typ denna) https://www.alie
 Metallsugrör från ICA eller Amazon https://t.ly/_2JY1<p></p>
 1 st motstånd 100 Ohm<p></p>
 2 skruvar M2.5 <p></p>
+1 micro usb-kabel<p></p>
 Krympslang till LEDen https://www.aliexpress.com/item/1005006991396293.html <p></p>
 Dupontkablar (female-female) 3st 30cm  och ett gäng 10cm https://www.aliexpress.com/item/1005005501503609.html<p></p>
 
