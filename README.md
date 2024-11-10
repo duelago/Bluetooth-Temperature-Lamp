@@ -40,11 +40,11 @@ Dupontkablar (female-female) 3st 30cm  och ett gäng 10cm https://www.aliexpress
 
 <h2>Steg ett är att flasha firmware på vår termometer</h2>
 Plocka isär den och löd fast kablar enligt denna bild. Dessa ska du sedan koppla till din USB-to-TTL adapter<p></p>
-rx-tx<br>
+<b>rx-tx<br>
 tx-rx<br>
 vbat+- 3.3v<br>
 vbat- - ground<br>
-rest - reset<p></p>
+rest - reset</b>b><p></p>
 
 ![bth01](https://github.com/user-attachments/assets/803ec53a-a5db-4e93-a42c-f810dcf24239)
 <p></p>
