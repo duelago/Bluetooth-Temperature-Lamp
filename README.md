@@ -50,6 +50,12 @@ rest - reset</b><p></p>
 <p></p>
 Följ instruktionerna här för hur du flashar din BTH01  https://github.com/pvvx/THB2 <br> (Denna modellen har jag, men det finns varianter https://pvvx.github.io/BTH01/ )<br>
 
+Först måste du flasha .hex filen via terminalen med hjälp av python scriptet. (Finns även bland mina filer) <br>
+Typ så här görs det på min mac:<p>
+
+![Screenshot 2024-11-10 at 17 37 44](https://github.com/user-attachments/assets/9c286a5a-9f0a-4463-80fe-4490a1844e3b)
+Din COM-port heter något annat. Den får du luska reda på.
+
 
 ![Screenshot 2024-11-10 at 10 51 43](https://github.com/user-attachments/assets/f4c2ec4e-3faa-4bb0-8a1c-c26970b5aea2)
 <p></p>
