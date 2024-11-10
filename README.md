@@ -14,9 +14,14 @@ ESP32 38 pin- Testad med denna modellen från AliExpress https://www.aliexpress.
 Blåtandstermometer - https://www.aliexpress.com/item/1005006458594110.html<p></p>
 LED  - https://www.aliexpress.com/item/1005004950092116.html<p></p>
 OLED-skärm https://www.aliexpress.com/item/32804426981.htm<p></p>
-USB-to-TTL adapter (Vet inte vilken som är bra, men typ denna) https://www.aliexpress.com/item/1005004742270942.html<p></p>
-Dupontkablar<p></p>
-Metallsugrör från ICA eller Amazon<p></p>
+USB-to-TTL adapter (Vet inte vilken som är bra, men typ denna) https://www.aliexpress.com/item/1005004742270942.html<br>
+Metallsugrör från ICA eller Amazon<p></p> https://www.amazon.se/rostfritt-%C3%A5teranv%C3%A4ndbara-metallbar-dricksugr%C3%B6r-fruktjuice/dp/B0C38VXXFH?th=1<br>
+1 st motstånd 100 Ohm<br>
+2 skruvar M2.5 <br>
+Krympslang till LEDen https://www.aliexpress.com/item/1005006991396293.html <br>
+Dupontkablar (female-female) 3st 30cm  och ett gäng 10cm https://www.aliexpress.com/item/1005005501503609.html<p></p>
+
+3D-printade detaljer i PLA<p></p>
 
 ![Screenshot 2024-11-09 at 18 48 34](https://github.com/user-attachments/assets/58aed1f7-5daf-4fa9-8259-60117b535dff)
 
