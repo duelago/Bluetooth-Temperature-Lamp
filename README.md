@@ -15,7 +15,7 @@ Blåtandstermometer - https://www.aliexpress.com/item/1005006458594110.html<p></
 LED  - https://www.aliexpress.com/item/1005004950092116.html<p></p>
 OLED-skärm https://www.aliexpress.com/item/32804426981.html<p></p>
 USB-to-TTL adapter (Vet inte vilken som är bra, men typ denna) https://www.aliexpress.com/item/1005004742270942.html<br>
-Metallsugrör från ICA eller Amazon<p></p> https://www.amazon.se/rostfritt-%C3%A5teranv%C3%A4ndbara-metallbar-dricksugr%C3%B6r-fruktjuice/dp/B0C38VXXFH?th=1<br>
+Metallsugrör från ICA eller Amazon https://t.ly/_2JY1<br>
 1 st motstånd 100 Ohm<br>
 2 skruvar M2.5 <br>
 Krympslang till LEDen https://www.aliexpress.com/item/1005006991396293.html <br>
