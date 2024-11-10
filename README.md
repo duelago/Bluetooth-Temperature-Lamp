@@ -55,6 +55,7 @@ Typ så här görs det på min mac:<p>
 
 ![Screenshot 2024-11-10 at 17 37 44](https://github.com/user-attachments/assets/9c286a5a-9f0a-4463-80fe-4490a1844e3b)
 Din COM-port heter något annat. Den får du luska reda på.
+<h1>Web-interfacet där du uppdaterar din firmware i fortsättningen ser ut så här</h1>
 
 
 ![Screenshot 2024-11-10 at 10 51 43](https://github.com/user-attachments/assets/f4c2ec4e-3faa-4bb0-8a1c-c26970b5aea2)
