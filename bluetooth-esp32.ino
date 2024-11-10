@@ -113,7 +113,7 @@ void setup() {
     display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
     display.clearDisplay();
     FastLED.addLeds<WS2811, DATA_PIN, RGB>(leds, NUM_LEDS);
-    FastLED.setBrightness(100);
+    FastLED.setBrightness(200);
 
     
 
