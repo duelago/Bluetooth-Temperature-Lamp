@@ -2,7 +2,7 @@
 
 En bordslampa som byter färg beroende på yttertemperaturen och som även visar tempen på en liten OLED-skärm.
 Lampan kommunicerar med en billig blåtandstermometer som vi installerar alternativ firmware på och placerar utomhus (i närheten).
-Kodat i Arduino IDE. Termometern vi ansluter till måste flashas en gång med hjälp av ett pythonscript. 
+Kodat i Arduino IDE. Termometern vi ansluter till måste flashas en gång med hjälp av ett pythonscript och lödkolven måste fram. 
 <p></p>
 Jag printar lådan och locket i PLA med 0.6 nozzle på min Prusa.<br>
 Själva toppen av lampan till höger i bild är printad med 0.4 nozzle. Två perimetrar, ingen infill i själva lampan men fästet längst ner har infill. (Prusa slicer har stöd för olika infill på olika lager)<p></p>
