@@ -5,7 +5,7 @@ Lampan kommunicerar med en billig blåtandstermometer som vi installerar alterna
 Kodat i Arduino IDE. Termometern vi ansluter till måste flashas en gång med hjälp av ett pythonscript och lödkolven måste fram. 
 <p></p>
 Jag printar lådan och locket i PLA med 0.6 nozzle på min Prusa.<br>
-Själva toppen av lampan till höger i bild är printad med 0.4 nozzle. Två perimetrar, ingen infill i själva lampan men fästet längst ner har infill. (Prusa slicer har stöd för olika infill på olika lager)<p></p>
+Själva toppen av lampan till höger i bild är printad med 0.4 nozzle. Två perimetrar, ingen infill i själva lampan men fästet längst ner har infill. (Prusa slicer har stöd för olika infill på olika lager) Pinnen är ett metallsugrör från ICA<p></p>
 
 ![Screenshot 2024-11-10 at 17 25 36 copy](https://github.com/user-attachments/assets/56b19ddc-1d22-4644-b5cb-de2b17a1d4d6)
 
