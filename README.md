@@ -32,7 +32,8 @@ Dupontkablar (female-female) 3st 30cm  och ett gäng 10cm https://www.aliexpress
 
 3D-printade detaljer i PLA<p></p>
 
-![Screenshot 2024-11-09 at 18 48 34](https://github.com/user-attachments/assets/58aed1f7-5daf-4fa9-8259-60117b535dff)
+![Screenshot 2024-11-10 at 20 31 09](https://github.com/user-attachments/assets/8a75f3b7-e314-4ef4-acd3-05346076fb09)
+
 
 ![Screenshot 2024-11-09 at 18 48 15](https://github.com/user-attachments/assets/5eb7eb65-e5cb-4701-9203-0e4e120e31b3)
 
