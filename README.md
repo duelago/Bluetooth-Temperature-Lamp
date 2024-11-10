@@ -43,7 +43,7 @@ rest - reset<p></p>
 
 ![bth01](https://github.com/user-attachments/assets/803ec53a-a5db-4e93-a42c-f810dcf24239)
 <p></p>
-Följ instruktionerna här för hur du flashar<br>
+Följ instruktionerna här för hur du flashar din BTH01   (Denna modellen har jag, men det finns varianter https://pvvx.github.io/BTH01/ )<br>
 https://github.com/pvvx/THB2
 
 ![Screenshot 2024-11-10 at 10 51 43](https://github.com/user-attachments/assets/f4c2ec4e-3faa-4bb0-8a1c-c26970b5aea2)
