@@ -16,7 +16,7 @@ char password[] = "";   // Leave empty to configure with WiFi Manager
 
 #define OLED_RESET -1   // Use -1 for ESP32, no reset pin
 #define NUM_LEDS 1
-#define DATA_PIN 2
+#define DATA_PIN 4
 
 CRGB leds[NUM_LEDS];
 Adafruit_SSD1306 display(128, 64, &Wire, OLED_RESET);
@@ -64,7 +64,7 @@ void decodeServiceData(const std::string& payload) {
 
         // Update display and LED color
         setLEDColor(round(temperature));
-        displayCenteredText(String(round(temperature)), 2, 15);
+        displayCenteredText(String((int)round(temperature)), 2, 15);
     }
 }
 
@@ -86,32 +86,51 @@ void displayCenteredText(String text, int textSize, int yPosition) {
     display.clearDisplay();
     display.setTextSize(textSize);
     display.setTextColor(WHITE);
+    
     int16_t x1, y1;
     uint16_t width, height;
     display.getTextBounds(text, 0, 0, &x1, &y1, &width, &height);
+    
     int xPosition = (display.width() - width) / 2;
-    display.setCursor(xPosition, yPosition);
+    // Adjusted Y position to start on the third row
+    int adjustedYPosition = 32;  // Use 32 or another suitable value based on your needs
+    
+    display.setCursor(xPosition, adjustedYPosition);
     display.print(text);
     display.display();
 }
 
 // Set LED color based on temperature
 void setLEDColor(float roundedTemperature) {
-    if (roundedTemperature >= 0 && roundedTemperature <= 5) {
-        leds[0] = 0x00FF06; // Green
+    Serial.print("Setting LED color based on temperature: ");
+    Serial.println(roundedTemperature);
+
+    if (roundedTemperature >= -50 && roundedTemperature < -5) {
+        leds[0] = 0xFF44DD; // Pink
+        Serial.println("Shifting color to Pink because temperature is between -50 and -5 °C");
     } else if (roundedTemperature >= -5 && roundedTemperature < 0) {
         leds[0] = 0x0006FF; // Blue
-    } else if (roundedTemperature >= -50 && roundedTemperature < -5) {
-        leds[0] = 0xFF44DD; // Pink
-    } else if (roundedTemperature >= 6 && roundedTemperature <= 10) {
+        Serial.println("Shifting color to Blue because temperature is between -5 and 0 °C");
+    } else if (roundedTemperature >= 0 && roundedTemperature <= 5) {
+        leds[0] = 0x00FF06; // Green
+        Serial.println("Shifting color to Green because temperature is between 0 and 5 °C");
+    } else if (roundedTemperature > 5 && roundedTemperature <= 10) {
         leds[0] = 0xFFF600; // Yellow
-    } else if (roundedTemperature >= 11 && roundedTemperature <= 15) {
+        Serial.println("Shifting color to Yellow because temperature is between 5 and 10 °C");
+    } else if (roundedTemperature > 10 && roundedTemperature <= 15) {
         leds[0] = 0xFFA500; // Orange
-    } else if (roundedTemperature >= 16 && roundedTemperature <= 20) {
+        Serial.println("Shifting color to Orange because temperature is between 10 and 15 °C");
+    } else if (roundedTemperature > 15 && roundedTemperature <= 20) {
         leds[0] = 0xFF0000; // Red
-    } else if (roundedTemperature >= 21 && roundedTemperature <= 45) {
+        Serial.println("Shifting color to Red because temperature is between 15 and 20 °C");
+    } else if (roundedTemperature > 20 && roundedTemperature <= 45) {
         leds[0] = 0x800080; // Purple
+        Serial.println("Shifting color to Purple because temperature is between 20 and 45 °C");
+    } else {
+        leds[0] = 0x000000; // Off
+        Serial.println("Turning off the LED because temperature is outside the defined range");
     }
+
     FastLED.show();
 }
 
@@ -140,13 +159,14 @@ void setup() {
     server.on("/", HTTP_GET, []() {
         // Replace the placeholder "--" in the HTML with the current temperature
         String htmlWithTemp = String(html);
-        htmlWithTemp.replace("--", String(temperature));
+        htmlWithTemp.replace("--", String((int)round(temperature)));
         server.send(200, "text/html", htmlWithTemp);  // Send the HTML page with the temperature
     });
 
     server.begin();
     displayCenteredText("Starting...", 2, 15);
 }
+
 float lastTemperature = -999.0;  // Initialize with an impossible temperature value
 
 void loop() {
@@ -161,7 +181,7 @@ void loop() {
         lastTemperature = temperature;
 
         // Update the OLED display and LED
-        displayCenteredText(String(round(temperature)), 2, 15);
+        displayCenteredText(String((int)round(temperature)), 2, 15);
         setLEDColor(round(temperature));
     }
 
