@@ -11,7 +11,7 @@ Lampan kommunicerar med en billig blåtandstermometer som vi installerar alterna
 
 
 
-Själva hjärnan i operationen är en ESP32
+<h2>Själva hjärnan i operationen är en ESP32</h2>
 
 Detta behövs:<br>
 ESP32 38 pin- Testad med denna modellen från AliExpress https://www.aliexpress.com/item/1005006900641832.html<p></p>
@@ -38,7 +38,8 @@ Dupontkablar (female-female) 3st 30cm  och ett gäng 10cm https://www.aliexpress
 ![Screenshot 2024-11-09 at 18 54 38](https://github.com/user-attachments/assets/704f6198-a035-4996-8708-9e186b75ae49)
 
 
-Steg ett är att flasha firmware på vår termometer. Plocka isär den och löd fast kablar enligt denna bild. Dessa ska du sedan koppla till din USB-to-TTL adapter<p></p>
+<h2>Steg ett är att flasha firmware på vår termometer<h2>
+Plocka isär den och löd fast kablar enligt denna bild. Dessa ska du sedan koppla till din USB-to-TTL adapter<p></p>
 rx-tx<br>
 tx-rx<br>
 vbat+- 3.3v<br>
