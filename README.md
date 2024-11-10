@@ -64,7 +64,8 @@ När du flashat klart, klickar du på  READ under config-taben och ta reda på t
 <p></p>
 Sen är det bara att kompilera [.ino](https://github.com/duelago/bluetoothlamp/blob/main/bluetooth-esp32.ino) filen i Arduino IDE. Se till att korrekt esp32 är vald som board och att all bibliotek är installerade.
 <p></p>
-![Screenshot 2024-11-10 at 11 02 57](https://github.com/user-attachments/assets/1f7cb163-c5ea-46c3-a449-736856127f1f)
+![Screenshot 2024-11-10 at 17 43 17](https://github.com/user-attachments/assets/86fbe63b-f6b5-4025-ac8f-f525006a604a)
+
 
 -----
 <br>
