@@ -73,6 +73,10 @@ Sen är det bara att kompilera [.ino](https://github.com/duelago/bluetoothlamp/b
 
 ![Screenshot 2024-11-10 at 17 43 17](https://github.com/user-attachments/assets/c31c2913-b47f-4bf1-b265-2f90f9bb2758)
 
+<h2>nRF Connect</h2>
+
+Tips. Denna appen är utmärkt för att se mer info om din blåtandstermometer samt för felökning. Klarar av att decoda temperaturen även när vi kör custom firmware exempelvis<p></p>
+![Screenshot_2024-11-11-08-14-45-61_b5a5c5cb02ca09c784c5d88160e2ec24](https://github.com/user-attachments/assets/37599e6a-c099-4c1a-941f-a13828a8cf3f)
 
 -----
 <br>
