@@ -15,6 +15,7 @@ Adafruit_SSD1306 display(128, 64, &Wire, OLED_RESET);
 
 float temperature = 0.0;
 const std::string targetMacAddress = "34:ec:b6:65:18:3e";  // MAC-adressen till din termometer
+                                                           // OBS! Funkar endast med små bokstäver just nu
 
 // BLE Scan settings
 NimBLEScan* pBLEScan;
