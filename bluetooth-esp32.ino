@@ -1,4 +1,3 @@
-
 #include <FastLED.h>
 #include <Wire.h>
 #include <Adafruit_GFX.h>
@@ -12,20 +11,34 @@
 CRGB leds[NUM_LEDS];
 Adafruit_SSD1306 display(128, 64, &Wire, OLED_RESET);
 
-
 float temperature = 0.0;
-const std::string targetMacAddress = "34:ec:b6:65:18:3e";  // MAC-adressen till din termometer
-                                                           // OBS! Funkar endast med små bokstäver just nu
+bool hasReceivedReading = false;  // Flag to indicate if a valid reading has been received
+const std::string targetMacAddress = "34:EC:B6:65:16:FB";  // MAC address of your thermometer 
 
 // BLE Scan settings
 NimBLEScan* pBLEScan;
 const int scanTime = 5;  // Scan duration in seconds
 
-
-
 // Helper function to decode a little-endian 16-bit unsigned integer
 uint16_t decodeLittleEndianU16(uint8_t lowByte, uint8_t highByte) {
     return (uint16_t)((highByte << 8) | lowByte);
+}
+
+// Function to convert a char to lowercase
+char toLowerChar(char c) {
+    if (c >= 'A' && c <= 'Z') {
+        return c + 32;
+    }
+    return c;
+}
+
+// Function to convert a string to lowercase
+String toLowerCase(const String& str) {
+    String lowerStr = str;
+    for (int i = 0; i < lowerStr.length(); i++) {
+        lowerStr[i] = toLowerChar(lowerStr[i]);
+    }
+    return lowerStr;
 }
 
 // Function to decode the raw service data and update the temperature
@@ -37,6 +50,8 @@ void decodeServiceData(const std::string& payload) {
         Serial.print(temperature);
         Serial.println(" °C");
 
+        hasReceivedReading = true;  // Set flag to true once we receive a valid reading
+
         // Update display and LED color
         setLEDColor(round(temperature));
         displayCenteredText(String((int)round(temperature)), 2, 15);
@@ -46,7 +61,7 @@ void decodeServiceData(const std::string& payload) {
 // Callback to handle BLE Advertisements
 class MyAdvertisedDeviceCallbacks : public NimBLEAdvertisedDeviceCallbacks {
     void onResult(NimBLEAdvertisedDevice* advertisedDevice) {
-        if (advertisedDevice->getAddress().toString() == targetMacAddress) {
+        if (toLowerCase(advertisedDevice->getAddress().toString().c_str()) == toLowerCase(targetMacAddress.c_str())) {
             if (advertisedDevice->haveServiceData()) {
                 decodeServiceData(advertisedDevice->getServiceData());
             } else {
@@ -61,15 +76,14 @@ void displayCenteredText(String text, int textSize, int yPosition) {
     display.clearDisplay();
     display.setTextSize(textSize);
     display.setTextColor(WHITE);
-    
+
     int16_t x1, y1;
     uint16_t width, height;
     display.getTextBounds(text, 0, 0, &x1, &y1, &width, &height);
-    
+
     int xPosition = (display.width() - width) / 2;
-    // Adjusted Y position to start on the third row
-    int adjustedYPosition = 32;  // Use 32 or another suitable value based on your needs
-    
+    int adjustedYPosition = 32;  // Adjusted Y position to start on the third row
+
     display.setCursor(xPosition, adjustedYPosition);
     display.print(text);
     display.display();
@@ -81,29 +95,21 @@ void setLEDColor(float roundedTemperature) {
     Serial.println(roundedTemperature);
 
     if (roundedTemperature >= -50 && roundedTemperature < -5) {
-        leds[0] = 0xFF44DD; // Pink
-        Serial.println("Shifting color to Pink because temperature is between -50 and -5 °C");
+        leds[0] = 0xFF44DD;  // Pink
     } else if (roundedTemperature >= -5 && roundedTemperature < 0) {
-        leds[0] = 0x0006FF; // Blue
-        Serial.println("Shifting color to Blue because temperature is between -5 and 0 °C");
+        leds[0] = 0x0006FF;  // Blue
     } else if (roundedTemperature >= 0 && roundedTemperature <= 5) {
-        leds[0] = 0x00FF06; // Green
-        Serial.println("Shifting color to Green because temperature is between 0 and 5 °C");
+        leds[0] = 0x00FF06;  // Green
     } else if (roundedTemperature > 5 && roundedTemperature <= 10) {
-        leds[0] = 0xFFF600; // Yellow
-        Serial.println("Shifting color to Yellow because temperature is between 5 and 10 °C");
+        leds[0] = 0xFFF600;  // Yellow
     } else if (roundedTemperature > 10 && roundedTemperature <= 15) {
-        leds[0] = 0xFFA500; // Orange
-        Serial.println("Shifting color to Orange because temperature is between 10 and 15 °C");
+        leds[0] = 0xFFA500;  // Orange
     } else if (roundedTemperature > 15 && roundedTemperature <= 20) {
-        leds[0] = 0xFF0000; // Red
-        Serial.println("Shifting color to Red because temperature is between 15 and 20 °C");
+        leds[0] = 0xFF0000;  // Red
     } else if (roundedTemperature > 20 && roundedTemperature <= 45) {
-        leds[0] = 0x800080; // Purple
-        Serial.println("Shifting color to Purple because temperature is between 20 and 45 °C");
+        leds[0] = 0x800080;  // Purple
     } else {
-        leds[0] = 0x000000; // Off
-        Serial.println("Turning off the LED because temperature is outside the defined range");
+        leds[0] = 0x000000;  // Off
     }
 
     FastLED.show();
@@ -116,7 +122,9 @@ void setup() {
     FastLED.addLeds<WS2811, DATA_PIN, RGB>(leds, NUM_LEDS);
     FastLED.setBrightness(200);
 
-    
+    // Initial LED color set to white before any valid temperature reading
+    leds[0] = CRGB::White;
+    FastLED.show();
 
     NimBLEDevice::init("");
     pBLEScan = NimBLEDevice::getScan();
@@ -125,26 +133,27 @@ void setup() {
     pBLEScan->setWindow(99);
     pBLEScan->setActiveScan(true);
 
-
+    // Display "HEJ" on boot
     displayCenteredText("HEJ", 2, 15);
 }
 
 float lastTemperature = -999.0;  // Initialize with an impossible temperature value
 
 void loop() {
- 
     pBLEScan->start(scanTime, false);
     Serial.println("Scanning...");
 
-    // Check if the temperature has changed
-    if (temperature != lastTemperature) {
+    if (!hasReceivedReading) {
+        // If we haven't received a valid reading yet, keep LED white and "OFF" on display
+        leds[0] = CRGB::White;
+        FastLED.show();
+        displayCenteredText("OFF", 2, 15);
+    } else if (temperature != lastTemperature) {
         // Update the display and LED only if the temperature has changed
         lastTemperature = temperature;
-
-        // Update the OLED display and LED
         displayCenteredText(String((int)round(temperature)), 2, 15);
         setLEDColor(round(temperature));
     }
 
-    delay(30000); // Scan every 30 seconds
+    delay(30000);  // Scan every 30 seconds
 }
