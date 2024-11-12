@@ -3,133 +3,130 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <NimBLEDevice.h>
-#include <SparkFun_SCD4x_Arduino_Library.h>
 
 #define OLED_RESET -1   // Use -1 for ESP32, no reset pin
-#define NUM_LEDS 6      // Updated to 6 LEDs
+#define NUM_LEDS 6      // Updated to use 6 LEDs
 #define DATA_PIN 4
 
 CRGB leds[NUM_LEDS];
 Adafruit_SSD1306 display(128, 64, &Wire, OLED_RESET);
-SCD4x scd4x(SCD4x_SENSOR_SCD40);
 
 float temperature = 0.0;
-const std::string targetMacAddress = "38:1f:8d:97:bd:5d";  // MAC address of your thermometer
+bool hasReceivedReading = false;  // Flag to indicate if a valid reading has been received
+const std::string targetMacAddress = "34:EC:B6:65:16:FB";  // MAC address of your thermometer
 
 // BLE Scan settings
 NimBLEScan* pBLEScan;
 const int scanTime = 5;  // Scan duration in seconds
 
-// CO2 thresholds
-const int co2High = 1300;
-const int co2Low = 1250;
-uint16_t currentCO2 = 0;
-bool isCO2High = false;
+// Helper function to decode a little-endian 16-bit unsigned integer
+uint16_t decodeLittleEndianU16(uint8_t lowByte, uint8_t highByte) {
+    return (uint16_t)((highByte << 8) | lowByte);
+}
 
-// Helper function to create a rainbow effect on LEDs 4, 5, 6
-void rainbowEffect() {
-    const int numSteps = 255;
-    for (int i = 0; i < numSteps; i++) {
-        fill_rainbow(&leds[3], 3, i, 7);  // Apply rainbow effect to LEDs 4, 5, 6
-        FastLED.show();
-        delay(10);
+// Function to convert a char to lowercase
+char toLowerChar(char c) {
+    if (c >= 'A' && c <= 'Z') {
+        return c + 32;
+    }
+    return c;
+}
+
+// Function to convert a string to lowercase
+String toLowerCase(const String& str) {
+    String lowerStr = str;
+    for (int i = 0; i < lowerStr.length(); i++) {
+        lowerStr[i] = toLowerChar(lowerStr[i]);
+    }
+    return lowerStr;
+}
+
+// Function to decode the raw service data and update the temperature
+void decodeServiceData(const std::string& payload) {
+    if (payload.length() >= 14 && payload[0] == 0x40) {
+        int16_t temp_int = (payload[6] & 0xff) | ((payload[7] & 0xff) << 8);
+        temperature = temp_int / 100.0;
+        Serial.print("Temperature: ");
+        Serial.print(temperature);
+        Serial.println(" °C");
+
+        hasReceivedReading = true;  // Set flag to true once we receive a valid reading
+
+        // Update display and LED color
+        setLEDColor(round(temperature));
+        displayCenteredText(String((int)round(temperature)), 2, 15);
     }
 }
+
+// Callback to handle BLE Advertisements
+class MyAdvertisedDeviceCallbacks : public NimBLEAdvertisedDeviceCallbacks {
+    void onResult(NimBLEAdvertisedDevice* advertisedDevice) {
+        if (toLowerCase(advertisedDevice->getAddress().toString().c_str()) == toLowerCase(targetMacAddress.c_str())) {
+            if (advertisedDevice->haveServiceData()) {
+                decodeServiceData(advertisedDevice->getServiceData());
+            } else {
+                Serial.println("No service data available.");
+            }
+        }
+    }
+};
 
 // Function to display centered text on the OLED screen
 void displayCenteredText(String text, int textSize, int yPosition) {
     display.clearDisplay();
     display.setTextSize(textSize);
     display.setTextColor(WHITE);
-    
+
     int16_t x1, y1;
     uint16_t width, height;
     display.getTextBounds(text, 0, 0, &x1, &y1, &width, &height);
-    
+
     int xPosition = (display.width() - width) / 2;
-    int adjustedYPosition = yPosition;  // Use provided yPosition
-    
+    int adjustedYPosition = 32;  // Adjusted Y position to start on the third row
+
     display.setCursor(xPosition, adjustedYPosition);
     display.print(text);
     display.display();
 }
 
-// Set LED color based on temperature for LEDs 1, 2, 3
-void setTemperatureLEDs(float roundedTemperature) {
-    CRGB color;
+// Set LED color based on temperature
+void setLEDColor(float roundedTemperature) {
+    Serial.print("Setting LED color based on temperature: ");
+    Serial.println(roundedTemperature);
+
     if (roundedTemperature >= -50 && roundedTemperature < -5) {
-        color = 0xFF44DD; // Pink
+        fill_solid(leds, NUM_LEDS, 0xFF44DD);  // Pink
     } else if (roundedTemperature >= -5 && roundedTemperature < 0) {
-        color = 0x0006FF; // Blue
+        fill_solid(leds, NUM_LEDS, 0x0006FF);  // Blue
     } else if (roundedTemperature >= 0 && roundedTemperature <= 5) {
-        color = 0x00FF06; // Green
+        fill_solid(leds, NUM_LEDS, 0x00FF06);  // Green
     } else if (roundedTemperature > 5 && roundedTemperature <= 10) {
-        color = 0xFFF600; // Yellow
+        fill_solid(leds, NUM_LEDS, 0xFFF600);  // Yellow
     } else if (roundedTemperature > 10 && roundedTemperature <= 15) {
-        color = 0xFFA500; // Orange
+        fill_solid(leds, NUM_LEDS, 0xFFA500);  // Orange
     } else if (roundedTemperature > 15 && roundedTemperature <= 20) {
-        color = 0xFF0000; // Red
+        fill_solid(leds, NUM_LEDS, 0xFF0000);  // Red
     } else if (roundedTemperature > 20 && roundedTemperature <= 45) {
-        color = 0x800080; // Purple
+        fill_solid(leds, NUM_LEDS, 0x800080);  // Purple
     } else {
-        color = 0x000000; // Off
+        fill_solid(leds, NUM_LEDS, 0x000000);  // Off
     }
 
-    leds[0] = leds[1] = leds[2] = color; // Set LEDs 1, 2, 3 to the same color
     FastLED.show();
 }
-
-// Set LED color based on CO2 level for LEDs 4, 5, 6
-void setCO2LEDs(uint16_t co2Level) {
-    CRGB color;
-    if (co2Level < 500) {
-        color = CRGB::Green;
-    } else if (co2Level < 700) {
-        color = CRGB::Yellow;
-    } else if (co2Level < 900) {
-        color = CRGB::Red;
-    } else if (co2Level < 1300) {
-        color = CRGB::Purple;
-    } else {
-        rainbowEffect(); // Trigger rainbow effect if CO2 is above 1300
-        return;
-    }
-
-    leds[3] = leds[4] = leds[5] = color; // Set LEDs 4, 5, 6 to the same color
-    FastLED.show();
-}
-
-// Define MyAdvertisedDeviceCallbacks class
-class MyAdvertisedDeviceCallbacks : public NimBLEAdvertisedDeviceCallbacks {
-public:
-    void onResult(NimBLEAdvertisedDevice* advertisedDevice) {
-        Serial.print("Advertised Device: ");
-        Serial.println(advertisedDevice->toString().c_str());
-
-        // Check if the advertised device's address matches the target
-        if (advertisedDevice->getAddress().toString() == targetMacAddress) {
-            // Handle logic when the target device is found
-            Serial.println("Target thermometer found!");
-            // You can add additional logic here, such as extracting temperature data
-        }
-    }
-};
 
 void setup() {
     Serial.begin(115200);
-
-    Wire.begin(18, 19); // SDA = GPIO 18, SCL = GPIO 19
-
-    if (!scd4x.begin(Wire)) {
-        Serial.println("Failed to initialize SCD40 sensor.");
-    } else {
-        Serial.println("SCD40 sensor initialized successfully.");
-    }
-    
     display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
     display.clearDisplay();
+    
     FastLED.addLeds<WS2811, DATA_PIN, RGB>(leds, NUM_LEDS);
     FastLED.setBrightness(200);
+    FastLED.setMaxPowerInVoltsAndMilliamps(5, 500);  // Limit power to 5V and 500 mA
+
+    // Initial LED color set to white before any valid temperature reading
+    fill_solid(leds, NUM_LEDS, CRGB::White);
+    FastLED.show();
 
     NimBLEDevice::init("");
     pBLEScan = NimBLEDevice::getScan();
@@ -138,18 +135,8 @@ void setup() {
     pBLEScan->setWindow(99);
     pBLEScan->setActiveScan(true);
 
+    // Display "HEJ" on boot
     displayCenteredText("HEJ", 2, 15);
-
-    // Initialize SCD4x sensor
-    if (!scd4x.begin(Wire)) {
-        Serial.println("Failed to initialize SCD4x sensor. Continuing with temperature measurements only.");
-        isCO2High = false;
-    } else {
-        scd4x.stopPeriodicMeasurement();
-        scd4x.setSensorAltitude(0);  // Set altitude in meters
-        scd4x.setAutomaticSelfCalibrationEnabled(false);  // Disable auto-calibration
-        scd4x.startPeriodicMeasurement();  // Start periodic CO2 measurement
-    }
 }
 
 float lastTemperature = -999.0;  // Initialize with an impossible temperature value
@@ -158,34 +145,17 @@ void loop() {
     pBLEScan->start(scanTime, false);
     Serial.println("Scanning...");
 
-    // Check if the temperature has changed
-    if (temperature != lastTemperature) {
+    if (!hasReceivedReading) {
+        // If we haven't received a valid reading yet, keep LED white and "OFF" on display
+        fill_solid(leds, NUM_LEDS, CRGB::White);
+        FastLED.show();
+        displayCenteredText("OFF", 2, 15);
+    } else if (temperature != lastTemperature) {
+        // Update the display and LED only if the temperature has changed
         lastTemperature = temperature;
         displayCenteredText(String((int)round(temperature)), 2, 15);
-        setTemperatureLEDs(round(temperature));
+        setLEDColor(round(temperature));
     }
 
-    // Handle CO2 measurement
-    if (scd4x.readMeasurement()) {
-        currentCO2 = scd4x.getCO2();
-        Serial.print("CO2: ");
-        Serial.println(currentCO2);
-
-        setCO2LEDs(currentCO2);
-
-        if (currentCO2 > co2High) {
-            if (!isCO2High) {  // Only trigger if state changes
-                isCO2High = true;
-                displayCenteredText(String(currentCO2) + " ppm", 1, 0);
-                rainbowEffect();
-            }
-        } else if (currentCO2 <= co2Low) {
-            if (isCO2High) {  // Only revert if state changes
-                isCO2High = false;
-                setTemperatureLEDs(round(temperature));  // Return to temperature-based colors
-            }
-        }
-    }
-
-    delay(30000);  // Loop delay to reduce scan frequency
+    delay(30000);  // Scan every 30 seconds
 }
