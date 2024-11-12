@@ -99,6 +99,22 @@ void setCO2LEDs(uint16_t co2Level) {
     FastLED.show();
 }
 
+// Define MyAdvertisedDeviceCallbacks class
+class MyAdvertisedDeviceCallbacks : public NimBLEAdvertisedDeviceCallbacks {
+public:
+    void onResult(NimBLEAdvertisedDevice* advertisedDevice) {
+        Serial.print("Advertised Device: ");
+        Serial.println(advertisedDevice->toString().c_str());
+
+        // Check if the advertised device's address matches the target
+        if (advertisedDevice->getAddress().toString() == targetMacAddress) {
+            // Handle logic when the target device is found
+            Serial.println("Target thermometer found!");
+            // You can add additional logic here, such as extracting temperature data
+        }
+    }
+};
+
 void setup() {
     Serial.begin(115200);
 
