@@ -14,7 +14,7 @@ Adafruit_SSD1306 display(128, 64, &Wire, OLED_RESET);
 SCD4x scd4x(SCD4x_SENSOR_SCD40);
 
 float temperature = 0.0;
-const std::string targetMacAddress = "fc:6a:62:d8:23:f4";  // MAC address of your thermometer
+const std::string targetMacAddress = "38:1f:8d:97:bd:5d";  // MAC address of your thermometer
 
 // BLE Scan settings
 NimBLEScan* pBLEScan;
