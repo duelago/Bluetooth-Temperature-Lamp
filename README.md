@@ -80,6 +80,8 @@ Tips. Denna appen är utmärkt för att se mer info om din blåtandstermometer s
 
 <h1>Snöflingelampan</h1>
 
+![Uploading Screenshot 2024-11-14 at 14.47.33.png…]()
+
 ![bluetooth](https://github.com/user-attachments/assets/bf20457e-ce37-4b2b-b8ec-bea16fd150e7)
 
 https://www.youtube.com/watch?v=6aXL863onwM
