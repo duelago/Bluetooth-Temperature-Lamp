@@ -145,12 +145,16 @@ void setTemperatureLEDColor(float roundedTemperature) {
 
 void handleCO2LEDs() {
     if (scd4x.readMeasurement()) {
-        currentCO2 = scd4x.getCO2();
+        uint16_t currentCO2 = scd4x.getCO2();
         Serial.print("CO2 Level: ");
         Serial.println(currentCO2);
 
-        // Set LED color based on CO2 level
-        if (currentCO2 <= 500) {
+        // Show rainbow effect when CO2 > 1300 ppm
+        if (currentCO2 >= 1300) {
+            showRainbowEffect(5000);
+        } 
+        // Set LED color based on CO2 level if it's below 1300 ppm
+        else if (currentCO2 <= 500) {
             fill_solid(leds + 3, 3, CRGB::Green);  // CO2: <= 500 ppm, Green
         } else if (currentCO2 > 500 && currentCO2 <= 800) {
             fill_solid(leds + 3, 3, CRGB::Yellow); // CO2: 501 - 800 ppm, Yellow
