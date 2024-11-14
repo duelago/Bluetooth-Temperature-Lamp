@@ -154,10 +154,10 @@ void handleCO2LEDs() {
             showRainbowEffect(5000);
         } 
         // Set LED color based on CO2 level if it's below 1300 ppm
-        else if (currentCO2 <= 500) {
-            fill_solid(leds + 3, 3, CRGB::Green);  // CO2: <= 500 ppm, Green
-        } else if (currentCO2 > 500 && currentCO2 <= 800) {
-            fill_solid(leds + 3, 3, CRGB::Yellow); // CO2: 501 - 800 ppm, Yellow
+        else if (currentCO2 <= 650) {
+            fill_solid(leds + 3, 3, CRGB::Green);  // CO2: <= 650 ppm, Green
+        } else if (currentCO2 > 650 && currentCO2 <= 800) {
+            fill_solid(leds + 3, 3, CRGB::Yellow); // CO2: 651 - 800 ppm, Yellow
         } else if (currentCO2 > 800 && currentCO2 <= 1000) {
             fill_solid(leds + 3, 3, CRGB::Orange); // CO2: 801 - 1000 ppm, Orange
         } else if (currentCO2 > 1000 && currentCO2 <= 1200) {
