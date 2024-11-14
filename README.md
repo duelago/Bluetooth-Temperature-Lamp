@@ -87,6 +87,7 @@ https://www.youtube.com/watch?v=6aXL863onwM
 
 Denna co2-sensorn, Scd40 använder jag i snöflingan. Dyr men bra.
 https://www.aliexpress.com/item/1005006275318058.html
+I övrigt är det bara att följa instruktionerna för blåtandslampan. Skillnaden är att vi måste seriekoppla 6 leds. Hur det görs ser du på skissen. Data in till data ut. Co2-sensorn kan köras på både 3.3V och 5V, men 5 volt rekommenderas.
 
 <img width="1316" alt="Screenshot 2024-11-14 at 18 16 51" src="https://github.com/user-attachments/assets/9654d1a4-1387-418b-aa64-a086f973d8fc">
 
