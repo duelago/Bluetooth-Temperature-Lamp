@@ -143,22 +143,28 @@ void setTemperatureLEDColor(float roundedTemperature) {
     FastLED.show();
 }
 
-// Handle LED behavior based on CO2 readings
 void handleCO2LEDs() {
     if (scd4x.readMeasurement()) {
         currentCO2 = scd4x.getCO2();
         Serial.print("CO2 Level: ");
         Serial.println(currentCO2);
 
-        if (currentCO2 > co2High) {
-            isCO2High = true;
-            fill_solid(leds + 3, 3, CRGB::Red);  // High CO2: Red
-            FastLED.show();
-        } else if (currentCO2 <= co2Low) {
-            isCO2High = false;
-            fill_solid(leds + 3, 3, CRGB::Purple);  // Low CO2: Purple
-            FastLED.show();
+        // Set LED color based on CO2 level
+        if (currentCO2 <= 500) {
+            fill_solid(leds + 3, 3, CRGB::Green);  // CO2: <= 500 ppm, Green
+        } else if (currentCO2 > 500 && currentCO2 <= 800) {
+            fill_solid(leds + 3, 3, CRGB::Yellow); // CO2: 501 - 800 ppm, Yellow
+        } else if (currentCO2 > 800 && currentCO2 <= 1000) {
+            fill_solid(leds + 3, 3, CRGB::Orange); // CO2: 801 - 1000 ppm, Orange
+        } else if (currentCO2 > 1000 && currentCO2 <= 1200) {
+            fill_solid(leds + 3, 3, CRGB::Red);    // CO2: 1001 - 1200 ppm, Red
+        } else if (currentCO2 > 1200 && currentCO2 <= 1299) {
+            fill_solid(leds + 3, 3, CRGB::Purple); // CO2: 1201 - 1299 ppm, Purple
+        } else {
+            fill_solid(leds + 3, 3, CRGB::White);  // CO2: > 1299 ppm, White (or another default color)
         }
+
+        FastLED.show();
     }
 }
 
