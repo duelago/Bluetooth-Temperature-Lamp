@@ -80,7 +80,8 @@ Tips. Denna appen är utmärkt för att se mer info om din blåtandstermometer s
 
 <h1>Snöflingelampan</h1>
 
-![Uploading Screenshot 2024-11-14 at 14.47.33.png…]()
+<img width="1728" alt="Screenshot 2024-11-14 at 14 47 33" src="https://github.com/user-attachments/assets/d1093373-c1f8-4ac1-91b9-4fd7299f5081">
+
 
 ![bluetooth](https://github.com/user-attachments/assets/bf20457e-ce37-4b2b-b8ec-bea16fd150e7)
 
