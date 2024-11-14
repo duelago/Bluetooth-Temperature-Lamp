@@ -85,6 +85,12 @@ https://www.youtube.com/watch?v=6aXL863onwM
 
 ![bluetooth](https://github.com/user-attachments/assets/fac4d198-dc57-4b21-b2d4-c6e285787fcd)
 
+Denna co2-sensorn, Scd40 använder jag i snöflingan. Dyr men bra.
+https://www.aliexpress.com/item/1005006275318058.html
+
+<img width="1316" alt="Screenshot 2024-11-14 at 18 16 51" src="https://github.com/user-attachments/assets/9654d1a4-1387-418b-aa64-a086f973d8fc">
+
+
 
 
 
