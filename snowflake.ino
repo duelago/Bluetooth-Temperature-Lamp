@@ -75,6 +75,7 @@ void displayCenteredText(String text, int textSize, int yPosition);
 void setTemperatureLEDColor(float roundedTemperature);
 void handleCO2LEDs();
 void showRainbowEffect(int duration);
+uint16_t decodeLittleEndianU16(uint8_t lowByte, uint8_t highByte);  // Function prototype
 
 // Helper function to decode a little-endian 16-bit unsigned integer
 uint16_t decodeLittleEndianU16(uint8_t lowByte, uint8_t highByte) {
@@ -151,10 +152,11 @@ void handleCO2LEDs() {
 
         if (currentCO2 > co2High) {
             isCO2High = true;
-            showRainbowEffect(5000);  // Rainbow effect for 5 seconds
+            fill_solid(leds + 3, 3, CRGB::Red);  // High CO2: Red
+            FastLED.show();
         } else if (currentCO2 <= co2Low) {
             isCO2High = false;
-            fill_solid(leds + 3, 3, CRGB::Black);  // Turn off LEDs 4, 5, 6
+            fill_solid(leds + 3, 3, CRGB::Purple);  // Low CO2: Purple
             FastLED.show();
         }
     }
