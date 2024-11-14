@@ -78,6 +78,13 @@ Sen är det bara att kompilera [.ino](https://github.com/duelago/bluetoothlamp/b
 Tips. Denna appen är utmärkt för att se mer info om din blåtandstermometer samt för felsökning. Klarar av att decoda temperaturen även när vi kör custom firmware exempelvis<p></p>
 ![Screenshot_2024-11-11-08-14-45-61_b5a5c5cb02ca09c784c5d88160e2ec24](https://github.com/user-attachments/assets/37599e6a-c099-4c1a-941f-a13828a8cf3f)
 
+<h1>Snöflingelampan</h1>
+
+![bluetooth](https://github.com/user-attachments/assets/bf20457e-ce37-4b2b-b8ec-bea16fd150e7)
+
+https://www.youtube.com/watch?v=6aXL863onwM
+
+
 -----
 <br>
 Mer dokumentation om blåtandsgrunkorna<br> 
