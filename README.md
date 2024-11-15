@@ -18,7 +18,7 @@ Själva toppen av lampan till höger i bild är printad med 0.4 nozzle. Två per
 <h2>Själva hjärnan i operationen är en ESP32</h2>
 
 Detta behövs:<br>
-ESP32 38 pin- Testad med denna modellen från AliExpress https://www.aliexpress.com/item/1005006900641832.html<p></p>
+ESP32 38 pin- Testad med denna modellen från AliExpress https://www.aliexpress.com/item/1005006900641832.html<p></p> (Jag kör med micro usb-anslutning eftersom jag har ett rejält lager med sådana kablar)
 Blåtandstermometer - https://www.aliexpress.com/item/1005006458594110.html<p></p>
 LED  - https://www.aliexpress.com/item/1005004950092116.html<p></p>
 OLED-skärm https://www.aliexpress.com/item/32804426981.html<p></p>
