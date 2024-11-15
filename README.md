@@ -80,6 +80,8 @@ Tips. Denna appen är utmärkt för att se mer info om din blåtandstermometer s
 
 <h1>Snöflingelampan</h1>
 
+Denna lampa är en vidareutveckling av blåtandslampan. Utöver temperatur har jag placerat en co2-sensor i lådan, samt kör med sex LEDs istället för endast en. Resultatet är att vi kan presentera mer information genom att varje LED teoretiskt går att styra individuellt. I denna versionen har jag delat upp LEDsen tre och tre där ena sidan visar temp och den andra koldioxidhalten i rummet. 
+
 https://www.youtube.com/watch?v=6aXL863onwM
 <img width="1728" alt="Screenshot 2024-11-14 at 14 47 33" src="https://github.com/user-attachments/assets/d1093373-c1f8-4ac1-91b9-4fd7299f5081">
 
