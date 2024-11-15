@@ -235,6 +235,6 @@ void loop() {
     } else {
         handleCO2LEDs();
     }
-
+    ElegantOTA.loop();
     server.handleClient();
 }
