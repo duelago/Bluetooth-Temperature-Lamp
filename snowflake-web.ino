@@ -31,6 +31,8 @@ const char* apiUrl = "https://listenapi.planetradio.co.uk/api9.2/nowplaying/mme"
 
 unsigned long previousMillis = 0; // Stores the last time BLE scan was triggered
 const unsigned long scanInterval = 10000; // Time between BLE scans (e.g., 10 seconds)
+unsigned long previousTitleCheckMillis = 0; // Stores the last time track title was checked
+const unsigned long titleCheckInterval = 45000; // 45 seconds between track title checks
 
 
 float temperature = 0.0;
@@ -216,6 +218,14 @@ void handleCO2LEDs() {
         FastLED.show();
     }
 }
+void blinkRedLEDs() {
+    fill_solid(leds, NUM_LEDS, CRGB::Red); // Turn all LEDs red
+    FastLED.show();
+    delay(500); // Delay for 500ms
+    fill_solid(leds, NUM_LEDS, CRGB::Black); // Turn off LEDs
+    FastLED.show();
+    delay(500); // Delay for 500ms to complete the blink cycle
+}
 
 void handleRoot() {
     String songTitle = getSongTitle();
@@ -269,6 +279,20 @@ void setup() {
 
 void loop() {
     unsigned long currentMillis = millis();
+    
+    // Check track title every 45 seconds
+    if (currentMillis - previousTitleCheckMillis >= titleCheckInterval) {
+        previousTitleCheckMillis = currentMillis;
+
+        String songTitle = getSongTitle(); // Get the current track title
+        Serial.println("Track Title: " + songTitle); // Print the track title to the serial monitor
+
+        if (songTitle == "Last Christmas") {
+            blinkRedLEDs(); // Blink all LEDs in red if track title is "Last Christmas"
+        }
+    }
+
+    // Existing BLE and CO2 handling code
     if (currentMillis - previousMillis >= scanInterval) {
         previousMillis = currentMillis;
         pBLEScan->start(scanTime, false);
@@ -282,6 +306,7 @@ void loop() {
     } else {
         handleCO2LEDs();
     }
+
     ElegantOTA.loop();
     server.handleClient();
 }
