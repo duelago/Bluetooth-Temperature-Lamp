@@ -7,8 +7,11 @@
 #include <WiFiManager.h>
 #include <WebServer.h>
 #include <ElegantOTA.h>
-#include <HTTPClient.h>  // Include HTTPClient for web requests
-#include <ArduinoJson.h> // Include ArduinoJson for JSON parsing
+#include <HTTPClient.h>  
+#include <ArduinoJson.h> 
+#include <EEPROM.h>  
+
+#define SONG_TITLE_ADDRESS 0
 
 
 #define OLED_RESET -1
@@ -54,6 +57,37 @@ void showRainbowEffect(int duration) {
         }
     }
 }
+
+// Function to write the song title to EEPROM
+void writeSongTitleToEEPROM(const String& songTitle) {
+    int len = songTitle.length();
+    for (int i = 0; i < len; i++) {
+        EEPROM.write(SONG_TITLE_ADDRESS + i, songTitle[i]);
+    }
+    EEPROM.write(SONG_TITLE_ADDRESS + len, '\0');  // Null-terminate the string
+    EEPROM.commit();  // Save changes to EEPROM
+}
+
+// Function to read the song title from EEPROM
+String readSongTitleFromEEPROM() {
+    String songTitle = "";
+    for (int i = SONG_TITLE_ADDRESS; i < SONG_TITLE_ADDRESS + 32; i++) {
+        char c = EEPROM.read(i);
+        if (c == '\0') break;
+        songTitle += c;
+    }
+    return songTitle;
+}
+
+// Function to handle the form for setting the song title
+void handleSetSongTitle() {
+    String songTitle = server.arg("songTitle");  // Get the song title from the form
+    if (songTitle.length() > 0) {
+        writeSongTitleToEEPROM(songTitle);  // Store it in EEPROM
+    }
+    server.send(200, "text/html", "<html><body><h1>Song Title Saved!</h1><a href='/'>Back</a></body></html>");
+}
+
 // Function to make HTTP request and parse JSON
 String getSongTitle() {
     HTTPClient http;
@@ -228,14 +262,26 @@ void blinkRedLEDs() {
 }
 
 void handleRoot() {
-    String songTitle = getSongTitle();
+    String currentSongTitle = getSongTitle();  // Get the current song title from the API
+    String storedSongTitle = readSongTitleFromEEPROM();  // Get the song title from EEPROM
+
+    // HTML content with both current and stored song titles
     String htmlContent = "<html><head><meta charset=\"UTF-8\"><title>Now Playing</title></head><body>"
                          "<h1>Now Playing:</h1>"
-                         "<p>" + songTitle + "</p>"
+                         "<p><strong>Current Song:</strong> " + currentSongTitle + "</p>"  // Show current song
+                         "<h2>Stored Song Title:</h2>"
+                         "<p>" + storedSongTitle + "</p>"  // Show stored song title from EEPROM
+                         "<form action='/setSongTitle' method='POST'>"
+                         "<label for='songTitle'>Enter Song Title: </label>"
+                         "<input type='text' id='songTitle' name='songTitle' required>"
+                         "<input type='submit' value='Save'>"
+                         "</form>"
                          "<p><a href=\"/update\">Firmware update</a></p>"
                          "</body></html>";
-    server.send(200, "text/html", htmlContent);
+
+    server.send(200, "text/html", htmlContent);  // Send the HTML response
 }
+
 
 void setup() {
     Serial.begin(115200);
@@ -249,9 +295,12 @@ void setup() {
     FastLED.setBrightness(200);
     FastLED.setMaxPowerInVoltsAndMilliamps(5, 500);  // Limit power to 5V and 500 mA
 
-  server.on("/", []() {
-    handleRoot();
-});
+    EEPROM.begin(512);
+
+
+    server.on("/", HTTP_GET, handleRoot);  // Handle GET requests to '/'
+    server.on("/setSongTitle", HTTP_POST, handleSetSongTitle);  // Handle POST requests to '/setSongTitle'
+
 
 
     ElegantOTA.begin(&server);
@@ -278,17 +327,20 @@ void setup() {
 }
 
 void loop() {
+
+
+    // Regular track title check every 45 seconds (as in the original code)
     unsigned long currentMillis = millis();
-    
-    // Check track title every 45 seconds
     if (currentMillis - previousTitleCheckMillis >= titleCheckInterval) {
         previousTitleCheckMillis = currentMillis;
 
-        String songTitle = getSongTitle(); // Get the current track title
-        Serial.println("Track Title: " + songTitle); // Print the track title to the serial monitor
+        String storedSongTitle = readSongTitleFromEEPROM();  // Get the stored song title
+        String currentSongTitle = getSongTitle();  // Get the current track title from API
 
-        if (songTitle == "Last Christmas") {
-            blinkRedLEDs(); // Blink all LEDs in red if track title is "Last Christmas"
+        // If the stored song title matches the current track title, do something
+        if (caseInsensitiveCompare(storedSongTitle.c_str(), currentSongTitle.c_str())) {
+            Serial.println("Playing stored song: " + currentSongTitle);
+            blinkRedLEDs(); // Add your logic to trigger actions (e.g., show on display, change LED color, etc.)
         }
     }
 
