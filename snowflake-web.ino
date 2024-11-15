@@ -7,6 +7,9 @@
 #include <WiFiManager.h>
 #include <WebServer.h>
 #include <ElegantOTA.h>
+#include <HTTPClient.h>  // Include HTTPClient for web requests
+#include <ArduinoJson.h> // Include ArduinoJson for JSON parsing
+
 
 #define OLED_RESET -1
 #define NUM_LEDS 6
@@ -23,6 +26,8 @@ WebServer server(80);
 CRGB leds[NUM_LEDS];
 Adafruit_SSD1306 display(128, 64, &Wire, OLED_RESET);
 SCD4x scd4x(SCD4x_SENSOR_SCD40);
+
+const char* apiUrl = "https://listenapi.planetradio.co.uk/api9.2/nowplaying/mme";
 
 unsigned long previousMillis = 0; // Stores the last time BLE scan was triggered
 const unsigned long scanInterval = 10000; // Time between BLE scans (e.g., 10 seconds)
@@ -46,6 +51,37 @@ void showRainbowEffect(int duration) {
             delay(5);  // Delay for smooth transition
         }
     }
+}
+// Function to make HTTP request and parse JSON
+String getSongTitle() {
+    HTTPClient http;
+    http.begin(apiUrl);
+    int httpResponseCode = http.GET();
+
+    if (httpResponseCode > 0) {
+        String payload = http.getString();
+        Serial.println("HTTP Response: " + payload);
+
+        // Parse JSON
+        StaticJsonDocument<1024> doc;
+        DeserializationError error = deserializeJson(doc, payload);
+
+        if (error) {
+            Serial.print("JSON Deserialization failed: ");
+            Serial.println(error.f_str());
+            return "Error parsing JSON";
+        }
+
+        // Extract the song title from the JSON response
+        // Adjusted to match the correct JSON structure
+        const char* songTitle = doc["TrackTitle"];
+        return songTitle ? String(songTitle) : "No song data";
+    } else {
+        Serial.print("HTTP GET request failed, error: ");
+        Serial.println(http.errorToString(httpResponseCode).c_str());
+        return "HTTP error";
+    }
+    http.end();
 }
 
 // Function to compare two strings case-insensitively
@@ -181,6 +217,16 @@ void handleCO2LEDs() {
     }
 }
 
+void handleRoot() {
+    String songTitle = getSongTitle();
+    String htmlContent = "<html><head><meta charset=\"UTF-8\"><title>Now Playing</title></head><body>"
+                         "<h1>Now Playing:</h1>"
+                         "<p>" + songTitle + "</p>"
+                         "<p><a href=\"/update\">Firmware update</a></p>"
+                         "</body></html>";
+    server.send(200, "text/html", htmlContent);
+}
+
 void setup() {
     Serial.begin(115200);
     WiFiManager wifiManager;
@@ -193,9 +239,10 @@ void setup() {
     FastLED.setBrightness(200);
     FastLED.setMaxPowerInVoltsAndMilliamps(5, 500);  // Limit power to 5V and 500 mA
 
-    server.on("/", []() {
-    server.send(200, "text/html", "<html><body><h1>Welcome!</h1><p><a href=\"/update\">Firmware update</a></p></body></html>");
-    });
+  server.on("/", []() {
+    handleRoot();
+});
+
 
     ElegantOTA.begin(&server);
     server.begin();
