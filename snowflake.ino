@@ -30,7 +30,10 @@ void showRainbowEffect(int duration) {
     unsigned long start = millis();
     while (millis() - start < duration) {
         for (int j = 0; j < 256; j++) {  // Cycle through the rainbow colors
-            for (int i = 0; i < NUM_LEDS; i++) {
+            
+      //    for (int i = 0; i < NUM_LEDS; i++) {   //Kör regnbåge på alla sex LEDS
+            for (int i = 3; i < NUM_LEDS; i++) {  // Kör regnbåge på tre 
+                
                 leds[i] = CHSV((i * 256 / NUM_LEDS + j) % 256, 255, 255);
             }
             FastLED.show();
@@ -38,6 +41,8 @@ void showRainbowEffect(int duration) {
         }
     }
 }
+
+
 
 // Function to compare two strings case-insensitively
 bool caseInsensitiveCompare(const char* str1, const char* str2) {
