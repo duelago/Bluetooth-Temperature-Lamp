@@ -265,13 +265,21 @@ void handleRoot() {
     String currentSongTitle = getSongTitle();  // Get the current song title from the API
     String storedSongTitle = readSongTitleFromEEPROM();  // Get the song title from EEPROM
 
-    // HTML content with both current and stored song titles
-    String htmlContent = "<html><head><meta charset=\"UTF-8\"><title>Now Playing</title></head><body>"
-                         "<h1>Now Playing:</h1>"
+    // Format temperature and CO2 values as strings
+    String temperatureString = String(temperature, 1) + " °C";  // One decimal place
+    String co2String = String(currentCO2) + " ppm";
+
+    // HTML content with current song, stored song, temperature, and CO2 information
+    String htmlContent = "<html><head><meta charset=\"UTF-8\"><title>Snowflake</title></head><body>"
+                        
+                         
+                          "<h2>Current Readings:</h2>"
+                         "<p><strong>Temperature:</strong> " + temperatureString + "</p>"  // Show temperature
+                         "<p><strong>CO2 Level:</strong> " + co2String + "</p>"  // Show CO2 level
                          "<p><strong>Current Song:</strong> " + currentSongTitle + "</p>"  // Show current song
                          "<h2>Stored Song Title:</h2>"
                          "<p>" + storedSongTitle + "</p>"  // Show stored song title from EEPROM
-                         "<form action='/setSongTitle' method='POST'>"
+                        "<form action='/setSongTitle' method='POST'>"
                          "<label for='songTitle'>Enter Song Title: </label>"
                          "<input type='text' id='songTitle' name='songTitle' required>"
                          "<input type='submit' value='Save'>"
@@ -279,8 +287,9 @@ void handleRoot() {
                          "<p><a href=\"/update\">Firmware update</a></p>"
                          "</body></html>";
 
-    server.send(200, "text/html", htmlContent);  // Send the HTML response
+    server.send(200, "text/html", htmlContent);  // Send the updated HTML content to the client
 }
+
 
 
 void setup() {
