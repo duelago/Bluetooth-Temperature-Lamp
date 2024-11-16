@@ -268,21 +268,32 @@ void blinkRedLEDs() {
 
 void handleRoot() {
     // Get the current song title from the API
-    String currentSongTitle = getSongTitle(); 
+    String currentSongTitle = getSongTitle();
     String storedSongTitle = readSongTitleFromEEPROM(); // Get the stored song title from EEPROM
 
     // Check if the song titles match
     if (currentSongTitle.equalsIgnoreCase(storedSongTitle)) {
         blockLEDUpdates = true; // Block other LED updates
-        blinkRedLEDs(); // Blink LEDs red
     } else {
         blockLEDUpdates = false; // Unblock LED updates
     }
 
-    // Update LEDs based on CO2 levels if not blocked
-    if (!blockLEDUpdates) {
-        handleCO2LEDs(); // Update CO2 LEDs
+    // Handle LED behavior based on blockLEDUpdates
+    if (blockLEDUpdates) {
+        while (blockLEDUpdates) { // Continuously blink red LEDs until unblocked
+            blinkRedLEDs();
+            // Recheck if the titles still match to possibly exit the loop
+            currentSongTitle = getSongTitle();
+            storedSongTitle = readSongTitleFromEEPROM();
+            if (!currentSongTitle.equalsIgnoreCase(storedSongTitle)) {
+                blockLEDUpdates = false;
+                break;
+            }
+        }
+    } else {
+        handleCO2LEDs(); // Update CO2 LEDs if not blocked
     }
+
 
     // Format the values for display
     String temperatureString = String(temperature, 1) + " °C"; // Format temperature
