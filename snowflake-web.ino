@@ -292,7 +292,7 @@ void handleRoot() {
     String htmlContent = "<html><head><meta charset=\"UTF-8\"><title>Snowflake</title></head><body>"
                          "<h1>Snowflake Status</h1>"
                          "<p>Temperature: " + temperatureString + "</p>"
-                         "<p>CO2 Level: " + co2String + "</p>"
+                         "<p>CO2 Level: " + scd4x.getCO2() + "</p>"
                          "<h2>Song Title</h2>"
                          "<p>Current: " + currentSongTitle + "</p>"
                          "<p>Stored: " + storedSongTitle + "</p>"
