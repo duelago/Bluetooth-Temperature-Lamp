@@ -294,30 +294,106 @@ void handleRoot() {
         handleCO2LEDs(); // Update CO2 LEDs if not blocked
     }
 
-
     // Format the values for display
     String temperatureString = String(temperature, 1) + " °C"; // Format temperature
     String co2String = String(currentCO2) + " ppm"; // Format CO2 level
 
     // Generate the HTML content
-    String htmlContent = "<html><head><meta charset=\"UTF-8\"><title>Snowflake</title></head><body>"
-                         "<h1>Snowflake Status</h1>"
-                         "<p>Temperature: " + temperatureString + "</p>"
-                         "<p>CO2 Level: " + scd4x.getCO2() + "</p>"
-                         "<h2>Song Title</h2>"
-                         "<p>Current: " + currentSongTitle + "</p>"
-                         "<p>Stored: " + storedSongTitle + "</p>"
-                         "<form action='/setSongTitle' method='post'>"
-                         "<label for='songTitle'>Set Song Title:</label>"
-                         "<input type='text' id='songTitle' name='songTitle' value='" + storedSongTitle + "'>"
-                         "<input type='submit' value='Save'>"
-                         "</form>"
-                         "<a href='/update'>Update Firmware</a>"
-                         "</body></html>";
+    String htmlContent = R"rawliteral(
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Snowflake</title>
+            <style>
+                body {
+                    font-family: Arial, sans-serif;
+                    margin: 0;
+                    padding: 20px;
+                    background-color: #f4f4f9;
+                    color: #333;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                }
+                h1 {
+                    color: #007bff;
+                    text-align: center;
+                }
+                p {
+                    margin: 10px 0;
+                }
+                .container {
+                    max-width: 600px;
+                    width: 100%;
+                    background-color: #fff;
+                    padding: 20px;
+                    border-radius: 10px;
+                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+                    box-sizing: border-box;
+                }
+                label {
+                    display: block;
+                    margin: 10px 0 5px;
+                    font-weight: bold;
+                }
+                input[type="text"] {
+                    width: 100%;
+                    padding: 10px;
+                    margin-bottom: 15px;
+                    border: 1px solid #ccc;
+                    border-radius: 5px;
+                    box-sizing: border-box;
+                }
+                input[type="submit"] {
+                    background-color: #007bff;
+                    color: #fff;
+                    border: none;
+                    padding: 10px 20px;
+                    border-radius: 5px;
+                    cursor: pointer;
+                    font-size: 16px;
+                    width: 100%;
+                }
+                input[type="submit"]:hover {
+                    background-color: #0056b3;
+                }
+                a {
+                    display: block;
+                    text-align: center;
+                    margin-top: 20px;
+                    color: #007bff;
+                    text-decoration: none;
+                    font-weight: bold;
+                }
+                a:hover {
+                    color: #0056b3;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>Snowflake Lamp</h1>
+                <p>Temperature: )rawliteral" + temperatureString + R"rawliteral(</p>
+                <p>CO2 Level: )rawliteral" + scd4x.getCO2() + R"rawliteral(</p>
+                <h2>Song Title</h2>
+                <p>Current: )rawliteral" + currentSongTitle + R"rawliteral(</p>
+                <p>Stored: )rawliteral" + storedSongTitle + R"rawliteral(</p>
+                <form action="/setSongTitle" method="post">
+                    <label for="songTitle">Set Song Title:</label>
+                    <input type="text" id="songTitle" name="songTitle" value=")rawliteral" + storedSongTitle + R"rawliteral(">
+                    <input type="submit" value="Save">
+                </form>
+                <a href="/update">Update Firmware</a>
+            </div>
+        </body>
+        </html>
+    )rawliteral";
 
     // Send the web page
     server.send(200, "text/html", htmlContent);
 }
+
 
 
 
