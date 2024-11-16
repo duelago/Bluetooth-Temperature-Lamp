@@ -30,6 +30,10 @@ CRGB leds[NUM_LEDS];
 Adafruit_SSD1306 display(128, 64, &Wire, OLED_RESET);
 SCD4x scd4x(SCD4x_SENSOR_SCD40);
 
+// Define the interval for CO2 level checks (30 seconds)
+const unsigned long co2CheckInterval = 30000;
+unsigned long previousCO2CheckMillis = 0;
+
 const char* apiUrl = "https://listenapi.planetradio.co.uk/api9.2/nowplaying/mme";
 
 unsigned long previousMillis = 0; // Stores the last time BLE scan was triggered
@@ -227,35 +231,43 @@ void setTemperatureLEDColor(float roundedTemperature) {
     FastLED.show();
 }
 
+
+// Function to handle CO2 LED updates
 void handleCO2LEDs() {
-    if (scd4x.readMeasurement()) {
-        uint16_t currentCO2 = scd4x.getCO2();
-        Serial.print("CO2 Level: ");
-        Serial.println(currentCO2);
+    unsigned long currentMillis = millis();
+    
+    // Check if 30 seconds have passed since the last CO2 check
+    if (currentMillis - previousCO2CheckMillis >= co2CheckInterval) {
+        previousCO2CheckMillis = currentMillis;  // Update the last check time
 
-        // Show rainbow effect when CO2 > 1300 ppm
-        if (currentCO2 >= 1300) {
-            showRainbowEffect(5000);
-        } 
-        // Set LED color based on CO2 level if it's below 1300 ppm
-        else if (currentCO2 <= 650) {
-            fill_solid(leds + 3, 3, CRGB::Green);  // CO2: <= 650 ppm, Green
-        } else if (currentCO2 > 650 && currentCO2 <= 800) {
-            fill_solid(leds + 3, 3, CRGB::Yellow); // CO2: 651 - 800 ppm, Yellow
-        } else if (currentCO2 > 800 && currentCO2 <= 1000) {
-            fill_solid(leds + 3, 3, CRGB::Orange); // CO2: 801 - 1000 ppm, Orange
-        } else if (currentCO2 > 1000 && currentCO2 <= 1200) {
-            fill_solid(leds + 3, 3, CRGB::Red);    // CO2: 1001 - 1200 ppm, Red
-        } else if (currentCO2 > 1200 && currentCO2 <= 1299) {
-            fill_solid(leds + 3, 3, CRGB::Purple); // CO2: 1201 - 1299 ppm, Purple
-        } else {
-            fill_solid(leds + 3, 3, CRGB::White);  // CO2: > 1299 ppm, White (or another default color)
+        if (scd4x.readMeasurement()) {
+            uint16_t currentCO2 = scd4x.getCO2();
+            Serial.print("CO2 Level: ");
+            Serial.println(currentCO2);
+
+            // Show rainbow effect when CO2 > 1300 ppm
+            if (currentCO2 >= 1300) {
+                showRainbowEffect(5000);
+            } 
+            // Set LED color based on CO2 level if it's below 1300 ppm
+            else if (currentCO2 <= 650) {
+                fill_solid(leds + 3, 3, CRGB::Green);  // CO2: <= 650 ppm, Green
+            } else if (currentCO2 > 650 && currentCO2 <= 800) {
+                fill_solid(leds + 3, 3, CRGB::Yellow); // CO2: 651 - 800 ppm, Yellow
+            } else if (currentCO2 > 800 && currentCO2 <= 1000) {
+                fill_solid(leds + 3, 3, CRGB::Orange); // CO2: 801 - 1000 ppm, Orange
+            } else if (currentCO2 > 1000 && currentCO2 <= 1200) {
+                fill_solid(leds + 3, 3, CRGB::Red);    // CO2: 1001 - 1200 ppm, Red
+            } else if (currentCO2 > 1200 && currentCO2 <= 1299) {
+                fill_solid(leds + 3, 3, CRGB::Purple); // CO2: 1201 - 1299 ppm, Purple
+            } else {
+                fill_solid(leds + 3, 3, CRGB::White);  // CO2: > 1299 ppm, White (or another default color)
+            }
+
+            FastLED.show();
         }
-
-        FastLED.show();
-    }
-}
-
+        }
+        }
 // Function to blink LEDs red
 void blinkRedLEDs() {
     fill_solid(leds, NUM_LEDS, CRGB::Red); // Turn all LEDs red
