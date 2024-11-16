@@ -80,7 +80,7 @@ Tips. Denna appen är utmärkt för att se mer info om din blåtandstermometer s
 
 <h1>Snöflingelampan</h1>
 
-Denna lampa är en vidareutveckling av blåtandslampan. Utöver temperatur har jag placerat en co2-sensor i lådan, samt kör med sex LEDs istället för endast en. Resultatet är att vi kan presentera mer information genom att varje LED teoretiskt går att styra individuellt. I denna versionen har jag delat upp LEDsen tre och tre där ena sidan visar temp och den andra koldioxidhalten i rummet. Flasha snowflake.ino samt studera kopplingsschemat nedan. Själva blåtandsdelen är identisk.
+Denna lampa är en vidareutveckling av blåtandslampan. Utöver temperatur har jag placerat en co2-sensor i lådan, samt kör med sex LEDs istället för endast en. Resultatet är att vi kan presentera mer information genom att varje LED teoretiskt går att styra individuellt. I denna versionen har jag delat upp LEDsen tre och tre där ena sidan visar temp och den andra koldioxidhalten i rummet. Flasha snowflake.ino (eller snowflake-web.ino om ni vill kunna se enheten på nätverket och göra firmwareuppgraderingar OTA) samt studera kopplingsschemat nedan. Själva blåtandsdelen är identisk.
 
 https://www.youtube.com/watch?v=6aXL863onwM
 <img width="1728" alt="Screenshot 2024-11-14 at 14 47 33" src="https://github.com/user-attachments/assets/d1093373-c1f8-4ac1-91b9-4fd7299f5081">
@@ -93,7 +93,9 @@ I övrigt är det bara att följa instruktionerna för blåtandslampan. Skillnad
 
 <img width="1316" alt="Screenshot 2024-11-14 at 18 16 51" src="https://github.com/user-attachments/assets/9654d1a4-1387-418b-aa64-a086f973d8fc">
 
-
+<h3>Snowflake Web</h3>
+Jag kunde inte låta bli så i denna versionen kan du varna för Last Christmas på Megapol, aka Whamageddonlampan, samt se data i en lokal webserver. Denna lampa kräver dok lite installation för att funka och är sämre att ge bort i present, men här har du allt lull-lull. 
+<img width="797" alt="Screenshot 2024-11-16 at 15 49 35" src="https://github.com/user-attachments/assets/f29bcf2c-4555-48fc-9b02-c113abb95836">
 
 
 
