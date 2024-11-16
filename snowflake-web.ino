@@ -42,6 +42,9 @@ float temperature = 0.0;
 bool hasReceivedReading = false;
 const std::string targetMacAddress = "38:1f:8d:97:bd:5d";
 
+bool blockLEDUpdates = false; // Flag to block other LED updates
+
+
 NimBLEScan* pBLEScan;
 const int scanTime = 5;
 
@@ -252,42 +255,57 @@ void handleCO2LEDs() {
         FastLED.show();
     }
 }
+
+// Function to blink LEDs red
 void blinkRedLEDs() {
     fill_solid(leds, NUM_LEDS, CRGB::Red); // Turn all LEDs red
     FastLED.show();
     delay(500); // Delay for 500ms
     fill_solid(leds, NUM_LEDS, CRGB::Black); // Turn off LEDs
     FastLED.show();
-    delay(500); // Delay for 500ms to complete the blink cycle
+    delay(500); // Delay for 500ms
 }
 
 void handleRoot() {
-    String currentSongTitle = getSongTitle();  // Get the current song title from the API
-    String storedSongTitle = readSongTitleFromEEPROM();  // Get the song title from EEPROM
+    // Get the current song title from the API
+    String currentSongTitle = getSongTitle(); 
+    String storedSongTitle = readSongTitleFromEEPROM(); // Get the stored song title from EEPROM
 
-    // Format temperature and CO2 values as strings
-    String temperatureString = String(temperature, 1) + " °C";  // One decimal place
-    String co2String = String(currentCO2) + " ppm";
+    // Check if the song titles match
+    if (currentSongTitle.equalsIgnoreCase(storedSongTitle)) {
+        blockLEDUpdates = true; // Block other LED updates
+        blinkRedLEDs(); // Blink LEDs red
+    } else {
+        blockLEDUpdates = false; // Unblock LED updates
+    }
 
-    // HTML content with current song, stored song, temperature, and CO2 information
+    // Update LEDs based on CO2 levels if not blocked
+    if (!blockLEDUpdates) {
+        handleCO2LEDs(); // Update CO2 LEDs
+    }
+
+    // Format the values for display
+    String temperatureString = String(temperature, 1) + " °C"; // Format temperature
+    String co2String = String(currentCO2) + " ppm"; // Format CO2 level
+
+    // Generate the HTML content
     String htmlContent = "<html><head><meta charset=\"UTF-8\"><title>Snowflake</title></head><body>"
-                        
-                         
-                          "<h2>Current Readings:</h2>"
-                         "<p><strong>Temperature:</strong> " + temperatureString + "</p>"  // Show temperature
-                         "<p><strong>CO2 Level:</strong> " + co2String + "</p>"  // Show CO2 level
-                         "<p><strong>Current Song:</strong> " + currentSongTitle + "</p>"  // Show current song
-                         "<h2>Stored Song Title:</h2>"
-                         "<p>" + storedSongTitle + "</p>"  // Show stored song title from EEPROM
-                        "<form action='/setSongTitle' method='POST'>"
-                         "<label for='songTitle'>Enter Song Title: </label>"
-                         "<input type='text' id='songTitle' name='songTitle' required>"
+                         "<h1>Snowflake Status</h1>"
+                         "<p>Temperature: " + temperatureString + "</p>"
+                         "<p>CO2 Level: " + co2String + "</p>"
+                         "<h2>Song Title</h2>"
+                         "<p>Current: " + currentSongTitle + "</p>"
+                         "<p>Stored: " + storedSongTitle + "</p>"
+                         "<form action='/setSongTitle' method='post'>"
+                         "<label for='songTitle'>Set Song Title:</label>"
+                         "<input type='text' id='songTitle' name='songTitle' value='" + storedSongTitle + "'>"
                          "<input type='submit' value='Save'>"
                          "</form>"
-                         "<p><a href=\"/update\">Firmware update</a></p>"
+                         "<a href='/update'>Update Firmware</a>"
                          "</body></html>";
 
-    server.send(200, "text/html", htmlContent);  // Send the updated HTML content to the client
+    // Send the web page
+    server.send(200, "text/html", htmlContent);
 }
 
 
