@@ -550,7 +550,7 @@ unsigned long currentMillis = millis();
     if (currentMillis - previousTitleCheckMillis >= titleCheckInterval) {
         previousTitleCheckMillis = currentMillis;
          
-        updateTemperature(); //Holfuy temp
+        
 
         String storedSongTitle = readSongTitleFromEEPROM();  // Get the stored song title
         String currentSongTitle = getSongTitle();  // Get the current track title from API
@@ -560,6 +560,7 @@ unsigned long currentMillis = millis();
             Serial.println("Playing stored song: " + currentSongTitle);
             blinkRedLEDs(); // Add your logic to trigger actions (e.g., show on display, change LED color, etc.)
         }
+        updateTemperature(); //Holfuy temp parsing
     }
 
     // Existing BLE and CO2 handling code
