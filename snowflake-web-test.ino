@@ -1,3 +1,4 @@
+
 #include <FastLED.h>
 #include <Wire.h>
 #include <Adafruit_GFX.h>
@@ -55,7 +56,7 @@ const int scanTime = 5;
 void blinkRedGreen(int duration) {
     unsigned long start = millis();
     unsigned long previousMillis = 0;
-    int interval = 500; // Blink interval in milliseconds
+    int interval = 999; // Blink interval in milliseconds
     bool isRedOnLed4 = true; // Start with LED 4 as red
 
     while (millis() - start < duration) {
@@ -66,11 +67,11 @@ void blinkRedGreen(int duration) {
             previousMillis = currentMillis; // Save the current time
 
             if (isRedOnLed4) {
-                leds[4] = CRGB::Red;   // Set LED at index 4 to red
-                leds[5] = CRGB::Green; // Set LED at index 5 to green
+                leds[4] = CRGB::Cyan;   // Set LED at index 4 to red
+                leds[5] = CRGB::Magenta; // Set LED at index 5 to green
             } else {
-                leds[4] = CRGB::Green; // Set LED at index 4 to green
-                leds[5] = CRGB::Red;   // Set LED at index 5 to red
+                leds[4] = CRGB::Magenta; // Set LED at index 4 to green
+                leds[5] = CRGB::Cyan;   // Set LED at index 5 to red
             }
 
             FastLED.show();
@@ -273,7 +274,7 @@ void handleCO2LEDs() {
             } else if (currentCO2 > 1200 && currentCO2 <= 1299) {
                 fill_solid(leds + 4, 2, CRGB::Purple); // CO2: 1201 - 1299 ppm, Purple
             } else {
-                blinkRedGreen;
+                blinkRedGreen(20000);
             }
 
             FastLED.show();
