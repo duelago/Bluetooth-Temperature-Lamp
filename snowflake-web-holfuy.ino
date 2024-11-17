@@ -545,16 +545,14 @@ void loop() {
 
 unsigned long currentMillis = millis();
 
-    // Check if 1 minute have passed
-    if (currentMillis - lastUpdateTime >= updateInterval) {
-        lastUpdateTime = currentMillis;  // Update the last update time
-        updateTemperature();  // Call the function to update temperature
-    }
+ 
 
-    // Regular track title check every 45 seconds (as in the original code)
-    //unsigned long currentMillis = millis();
+    // Regular track title check every 45 seconds 
+    
     if (currentMillis - previousTitleCheckMillis >= titleCheckInterval) {
         previousTitleCheckMillis = currentMillis;
+         
+        updateTemperature(); //Holfuy temp
 
         String storedSongTitle = readSongTitleFromEEPROM();  // Get the stored song title
         String currentSongTitle = getSongTitle();  // Get the current track title from API
