@@ -317,9 +317,7 @@ void setTemperatureLEDColor(float roundedTemperature) {
         fill_solid(leds, 2, 0x000000);  // Off
     }
 
-    // Next two LEDs should be white
-    fill_solid(leds + 2, 2, CRGB::White);
-
+  
     FastLED.show();
 }
 
