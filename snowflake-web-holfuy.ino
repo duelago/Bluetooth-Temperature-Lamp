@@ -120,36 +120,49 @@ void handleSetSongTitle() {
     server.send(200, "text/html", "<html><body><h1>Song Title Saved!</h1><a href='/'>Back</a></body></html>");
 }
 
-// Function to make HTTP request and parse JSON
+// Function to make HTTP request and parse JSON with retry mechanism
 String getSongTitle() {
     HTTPClient http;
-    http.begin(apiUrl);
-    int httpResponseCode = http.GET();
+    const int maxRetries = 5;  // Number of times to retry the request
+    const int retryDelay = 2000;  // Delay between retries in milliseconds
 
-    if (httpResponseCode > 0) {
-        String payload = http.getString();
-        Serial.println("HTTP Response: " + payload);
+    for (int attempt = 1; attempt <= maxRetries; ++attempt) {
+        http.begin(apiUrl);
+        int httpResponseCode = http.GET();
 
-        // Parse JSON
-        StaticJsonDocument<1024> doc;
-        DeserializationError error = deserializeJson(doc, payload);
+        if (httpResponseCode > 0) {
+            // Successful HTTP request
+            String payload = http.getString();
+            Serial.println("HTTP Response: " + payload);
 
-        if (error) {
-            Serial.print("JSON Deserialization failed: ");
-            Serial.println(error.f_str());
-            return "Error parsing JSON";
+            // Parse JSON
+            StaticJsonDocument<1024> doc;
+            DeserializationError error = deserializeJson(doc, payload);
+
+            if (error) {
+                Serial.print("JSON Deserialization failed: ");
+                Serial.println(error.f_str());
+                return "Error parsing JSON";
+            }
+
+            // Extract the song title from the JSON response
+            const char* songTitle = doc["TrackTitle"];
+            return songTitle ? String(songTitle) : "No song data";
+        } else {
+            // HTTP request failed, print error and retry
+            Serial.print("HTTP GET request failed (Attempt ");
+            Serial.print(attempt);
+            Serial.print("), error: ");
+            Serial.println(http.errorToString(httpResponseCode).c_str());
+
+            if (attempt < maxRetries) {
+                delay(retryDelay);  // Wait before retrying
+            }
         }
-
-        // Extract the song title from the JSON response
-        // Adjusted to match the correct JSON structure
-        const char* songTitle = doc["TrackTitle"];
-        return songTitle ? String(songTitle) : "No song data";
-    } else {
-        Serial.print("HTTP GET request failed, error: ");
-        Serial.println(http.errorToString(httpResponseCode).c_str());
-        return "HTTP error";
+        http.end();  // End the HTTP request to free resources
     }
-    http.end();
+
+    return "HTTP error after multiple retries";
 }
 
 // Function to compare two strings case-insensitively
@@ -538,29 +551,24 @@ void setup() {
 }
 
 void loop() {
+    unsigned long currentMillis = millis();
 
-
-
-unsigned long currentMillis = millis();
-
- 
-
-    // Regular track title check every 45 seconds 
-    
+    // Check for track title and temperature update at the same interval
     if (currentMillis - previousTitleCheckMillis >= titleCheckInterval) {
         previousTitleCheckMillis = currentMillis;
-         
         
-
+        // Check for the current song title
         String storedSongTitle = readSongTitleFromEEPROM();  // Get the stored song title
         String currentSongTitle = getSongTitle();  // Get the current track title from API
 
         // If the stored song title matches the current track title, do something
         if (caseInsensitiveCompare(storedSongTitle.c_str(), currentSongTitle.c_str())) {
             Serial.println("Playing stored song: " + currentSongTitle);
-            blinkRedLEDs(); // Add your logic to trigger actions (e.g., show on display, change LED color, etc.)
+            blinkRedLEDs(); // Add your logic to trigger actions
         }
-        updateTemperature(); //Holfuy temp parsing
+
+        // Update temperature right after checking the song title
+        updateTemperature(); // Holfuy temp parsing
     }
 
     // Existing BLE and CO2 handling code
@@ -570,6 +578,7 @@ unsigned long currentMillis = millis();
         Serial.println("Scanning...");
     }
 
+    // Handle CO2 sensor readings and LED display
     if (!hasReceivedReading) {
         fill_solid(leds, NUM_LEDS, CRGB::White);
         FastLED.show();
@@ -578,6 +587,7 @@ unsigned long currentMillis = millis();
         handleCO2LEDs();
     }
 
+    // Handle OTA updates and web server requests
     ElegantOTA.loop();
     server.handleClient();
 }
