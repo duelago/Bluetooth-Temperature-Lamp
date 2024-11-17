@@ -11,6 +11,7 @@
 #include <HTTPClient.h>  
 #include <ArduinoJson.h> 
 #include <EEPROM.h>  
+#include <WiFiClientSecure.h>
 
 #define SONG_TITLE_ADDRESS 0
 
@@ -41,6 +42,11 @@ unsigned long previousMillis = 0; // Stores the last time BLE scan was triggered
 const unsigned long scanInterval = 10000; // Time between BLE scans (e.g., 10 seconds)
 unsigned long previousTitleCheckMillis = 0; // Stores the last time track title was checked
 const unsigned long titleCheckInterval = 45000; // 45 seconds between track title checks
+
+WiFiClientSecure client;
+const char* apiHost = "api.holfuy.com";
+unsigned long lastUpdateTime = 0;  // Stores the last time the temperature was updated
+const unsigned long updateInterval = 60000;  // 2 minutes in milliseconds
 
 
 float temperature = 0.0;
@@ -222,6 +228,73 @@ void displayCenteredText(String text, int textSize, int yPosition) {
     display.setCursor(xPosition, adjustedYPosition);
     display.print(text);
     display.display();
+}
+
+// Function to update the temperature from the JSON source
+void updateTemperature() {
+    client.setInsecure();
+    if (!client.connect(apiHost, 443)) {
+        Serial.println(F("Connection failed"));
+        return;
+    }
+
+    // Make the HTTP request
+    client.print(F("GET /live/?s=214&pw=correcthorsebatterystaple&m=JSON&tu=C&su=m/s HTTP/1.1\r\n"));
+    client.print(F("Host: "));
+    client.print(apiHost);
+    client.print(F("\r\nCache-Control: no-cache\r\n\r\n"));
+
+    // Wait for a response from the server
+    while (client.connected() && !client.available()) {
+        delay(10);  // Small delay to prevent watchdog timer resets
+    }
+
+    // Check if a valid response is received
+    if (!client.find("\r\n\r\n")) {
+        Serial.println(F("Invalid response"));
+        return;
+    }
+
+    // Parse the JSON response
+    StaticJsonDocument<384> doc;
+    DeserializationError error = deserializeJson(doc, client);
+
+    if (!error) {
+        float temp = doc["temperature"];
+        Serial.print("Temp Holfuy: ");
+        Serial.println(temp);
+
+        int roundedTemperature = round(temp);
+        Serial.print("Rounded Temp: ");
+        Serial.println(roundedTemperature);
+
+        setTemperatureLEDColorHolfuy(roundedTemperature);  // Set LED color based on temperature
+        temperature = roundedTemperature;
+    } else {
+        Serial.print(F("JSON deserialization failed: "));
+        Serial.println(error.f_str());
+    }
+}
+
+// Function to set LED color based on temperature
+void setTemperatureLEDColorHolfuy(float roundedTemperature) {
+    if (roundedTemperature >= -50 && roundedTemperature < -5) {
+        fill_solid(leds, 2, 0xFF44DD);  // Pink
+    } else if (roundedTemperature >= -5 && roundedTemperature < 0) {
+        fill_solid(leds, 2, 0x0006FF);  // Blue
+    } else if (roundedTemperature >= 0 && roundedTemperature <= 5) {
+        fill_solid(leds, 2, 0x00FF06);  // Green
+    } else if (roundedTemperature > 5 && roundedTemperature <= 10) {
+        fill_solid(leds, 2, 0xFFF600);  // Yellow
+    } else if (roundedTemperature > 10 && roundedTemperature <= 15) {
+        fill_solid(leds, 2, 0xFFA500);  // Orange
+    } else if (roundedTemperature > 15 && roundedTemperature <= 20) {
+        fill_solid(leds, 2, 0xFF0000);  // Red
+    } else if (roundedTemperature > 20 && roundedTemperature <= 45) {
+        fill_solid(leds, 2, 0x800080);  // Purple
+    }
+
+    FastLED.show();
 }
 
 void setTemperatureLEDColor(float roundedTemperature) {
@@ -469,8 +542,17 @@ void setup() {
 void loop() {
 
 
+
+unsigned long currentMillis = millis();
+
+    // Check if 1 minute have passed
+    if (currentMillis - lastUpdateTime >= updateInterval) {
+        lastUpdateTime = currentMillis;  // Update the last update time
+        updateTemperature();  // Call the function to update temperature
+    }
+
     // Regular track title check every 45 seconds (as in the original code)
-    unsigned long currentMillis = millis();
+    //unsigned long currentMillis = millis();
     if (currentMillis - previousTitleCheckMillis >= titleCheckInterval) {
         previousTitleCheckMillis = currentMillis;
 
