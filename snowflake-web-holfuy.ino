@@ -276,26 +276,26 @@ void updateTemperature() {
     }
 }
 
-// Function to set LED color based on temperature
 void setTemperatureLEDColorHolfuy(float roundedTemperature) {
     if (roundedTemperature >= -50 && roundedTemperature < -5) {
-        fill_solid(leds, 2, 0xFF44DD);  // Pink
+        fill_solid(leds + 2, 2, 0xFF44DD);  // Pink, start from index 2 and cover 2 LEDs
     } else if (roundedTemperature >= -5 && roundedTemperature < 0) {
-        fill_solid(leds, 2, 0x0006FF);  // Blue
+        fill_solid(leds + 2, 2, 0x0006FF);  // Blue
     } else if (roundedTemperature >= 0 && roundedTemperature <= 5) {
-        fill_solid(leds, 2, 0x00FF06);  // Green
+        fill_solid(leds + 2, 2, 0x00FF06);  // Green
     } else if (roundedTemperature > 5 && roundedTemperature <= 10) {
-        fill_solid(leds, 2, 0xFFF600);  // Yellow
+        fill_solid(leds + 2, 2, 0xFFF600);  // Yellow
     } else if (roundedTemperature > 10 && roundedTemperature <= 15) {
-        fill_solid(leds, 2, 0xFFA500);  // Orange
+        fill_solid(leds + 2, 2, 0xFFA500);  // Orange
     } else if (roundedTemperature > 15 && roundedTemperature <= 20) {
-        fill_solid(leds, 2, 0xFF0000);  // Red
+        fill_solid(leds + 2, 2, 0xFF0000);  // Red
     } else if (roundedTemperature > 20 && roundedTemperature <= 45) {
-        fill_solid(leds, 2, 0x800080);  // Purple
+        fill_solid(leds + 2, 2, 0x800080);  // Purple
     }
 
     FastLED.show();
 }
+
 
 void setTemperatureLEDColor(float roundedTemperature) {
     // First two LEDs for temperature
