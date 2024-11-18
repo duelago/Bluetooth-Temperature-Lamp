@@ -123,14 +123,18 @@ void handleSetSongTitle() {
     server.send(200, "text/html", "<html><body><h1>Song Title Saved!</h1><a href='/'>Back</a></body></html>");
 }
 
-// Function to make HTTP request and parse JSON with retry mechanism
+
+// Function to make an HTTP request and parse JSON with retry and timeout settings
+
 String getSongTitle() {
     HTTPClient http;
-    const int maxRetries = 2;  // Number of times to retry the request
-    const int retryDelay = 5000;  // Delay between retries in milliseconds
+    const int maxRetries = 2;         // Number of times to retry the request
+    const int retryDelay = 5000;      // Delay between retries in milliseconds
+    const int timeout = 10000;        // Timeout for the HTTP request in milliseconds
 
     for (int attempt = 1; attempt <= maxRetries; ++attempt) {
         http.begin(apiUrl);
+        http.setTimeout(timeout);     // Set the timeout for the request
         int httpResponseCode = http.GET();
 
         if (httpResponseCode > 0) {
@@ -148,9 +152,14 @@ String getSongTitle() {
                 return "Error parsing JSON";
             }
 
-            // Extract the song title from the JSON response
-            const char* songTitle = doc["TrackTitle"];
-            return songTitle ? String(songTitle) : "No song data";
+            // Check if the "TrackTitle" key exists and extract it
+            if (doc.containsKey("TrackTitle")) {
+                const char* songTitle = doc["TrackTitle"];
+                return songTitle ? String(songTitle) : "No song data";
+            } else {
+                Serial.println("Key 'TrackTitle' not found in JSON");
+                return "No song data";
+            }
         } else {
             // HTTP request failed, print error and retry
             Serial.print("HTTP GET request failed (Attempt ");
@@ -162,11 +171,13 @@ String getSongTitle() {
                 delay(retryDelay);  // Wait before retrying
             }
         }
+
         http.end();  // End the HTTP request to free resources
     }
 
     return "HTTP error after multiple retries";
 }
+
 
 // Function to compare two strings case-insensitively
 bool caseInsensitiveCompare(const char* str1, const char* str2) {
