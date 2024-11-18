@@ -32,21 +32,22 @@ CRGB leds[NUM_LEDS];
 Adafruit_SSD1306 display(128, 64, &Wire, OLED_RESET);
 SCD4x scd4x(SCD4x_SENSOR_SCD40);
 
-// Define the interval for CO2 level checks (30 seconds)
-const unsigned long co2CheckInterval = 30000;
+// Set the interval for all sensor checks to 45 seconds (45,000 milliseconds)
+const unsigned long sensorCheckInterval = 45000;
 unsigned long previousCO2CheckMillis = 0;
+unsigned long previousTitleCheckMillis = 0;
+unsigned long lastUpdateTime = 0;
 
 const char* apiUrl = "https://listenapi.planetradio.co.uk/api9.2/nowplaying/mme";
 
 unsigned long previousMillis = 0; // Stores the last time BLE scan was triggered
 const unsigned long scanInterval = 10000; // Time between BLE scans (e.g., 10 seconds)
-unsigned long previousTitleCheckMillis = 0; // Stores the last time track title was checked
-const unsigned long titleCheckInterval = 45000; // 45 seconds between track title checks
 
 WiFiClientSecure client;
 const char* apiHost = "api.holfuy.com";
-unsigned long lastUpdateTime = 0;  // Stores the last time the temperature was updated
-const unsigned long updateInterval = 60000;  // 2 minutes in milliseconds
+
+// The updated interval for all checks
+const unsigned long updateInterval = 45000;  // 45 seconds in milliseconds
 
 
 float temperature = 0.0;
@@ -338,7 +339,7 @@ void handleCO2LEDs() {
     unsigned long currentMillis = millis();
     
     // Check if 30 seconds have passed since the last CO2 check
-    if (currentMillis - previousCO2CheckMillis >= co2CheckInterval) {
+    if (currentMillis - previousCO2CheckMillis >= sensorCheckInterval) {
         previousCO2CheckMillis = currentMillis;  // Update the last check time
 
         if (scd4x.readMeasurement()) {
@@ -553,8 +554,11 @@ void setup() {
 void loop() {
     unsigned long currentMillis = millis();
 
-    // Check for track title and temperature update at the same interval
-    if (currentMillis - previousTitleCheckMillis >= titleCheckInterval) {
+    // Set unified sensor check interval to 45 seconds (45,000 milliseconds)
+    const unsigned long sensorCheckInterval = 45000;
+    
+    // Check for track title and temperature update at the unified interval
+    if (currentMillis - previousTitleCheckMillis >= sensorCheckInterval) {
         previousTitleCheckMillis = currentMillis;
         
         // Check for the current song title
@@ -571,7 +575,7 @@ void loop() {
         updateTemperature(); // Holfuy temp parsing
     }
 
-    // Existing BLE and CO2 handling code
+    // Existing BLE scan logic
     if (currentMillis - previousMillis >= scanInterval) {
         previousMillis = currentMillis;
         pBLEScan->start(scanTime, false);
