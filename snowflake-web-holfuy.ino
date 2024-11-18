@@ -273,7 +273,7 @@ void updateTemperature() {
             Serial.println(roundedTemperature);
 
             // Set the LED color based on the temperature
-            setTemperatureLEDColor(roundedTemperature);
+            setTemperatureLEDColorHolfuy(roundedTemperature);
             temperature = roundedTemperature;  // Store the temperature
         } else {
             // Handle JSON parsing error
