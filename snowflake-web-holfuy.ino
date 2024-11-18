@@ -126,8 +126,8 @@ void handleSetSongTitle() {
 // Function to make HTTP request and parse JSON with retry mechanism
 String getSongTitle() {
     HTTPClient http;
-    const int maxRetries = 5;  // Number of times to retry the request
-    const int retryDelay = 2000;  // Delay between retries in milliseconds
+    const int maxRetries = 2;  // Number of times to retry the request
+    const int retryDelay = 5000;  // Delay between retries in milliseconds
 
     for (int attempt = 1; attempt <= maxRetries; ++attempt) {
         http.begin(apiUrl);
