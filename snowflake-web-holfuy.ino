@@ -404,6 +404,10 @@ void handleRoot() {
                     color: #007bff;
                     text-align: center;
                 }
+                b {
+                    
+                    text-align: center;
+                }
                 p {
                     margin: 10px 0;
                 }
@@ -458,11 +462,11 @@ void handleRoot() {
         <body>
             <div class="container">
                 <h1>Snowflake Lamp</h1>
-                <p>Temperature: )rawliteral" + temperatureString + R"rawliteral(</p>
-                <p>CO2 Level: )rawliteral" + scd4x.getCO2() + R"rawliteral(</p>
-                <h2>Song Title</h2>
-                <p>Current: )rawliteral" + currentSongTitle + R"rawliteral(</p>
-                <p>Stored: )rawliteral" + storedSongTitle + R"rawliteral(</p>
+                <p><b>Local temperature: )rawliteral" + temperatureString + R"rawliteral(</b></p>
+                <p><b>CO2 Level in ppm: )rawliteral" + scd4x.getCO2() + R"rawliteral(</b></p>
+                <h2>Whamageddon warning - Mix Megapol</h2>
+                <p>Playing now: )rawliteral" + currentSongTitle + R"rawliteral(</p>
+                <p>Warning for: )rawliteral" + storedSongTitle + R"rawliteral(</p>
                 <form action="/setSongTitle" method="post">
                     <label for="songTitle">Set Song Title:</label>
                     <input type="text" id="songTitle" name="songTitle" value=")rawliteral" + storedSongTitle + R"rawliteral(">
