@@ -54,7 +54,9 @@ float temperature = 0.0;
 bool hasReceivedReading = false;
 const std::string targetMacAddress = "38:1f:8d:97:bd:5d";
 
-bool blockLEDUpdates = false; // Flag to block other LED updates
+//bool blockLEDUpdates = false; // Flag to block other LED updates
+// Global flag to control LED behavior
+bool isBlinking = false;
 
 
 NimBLEScan* pBLEScan;
@@ -367,43 +369,16 @@ void handleCO2LEDs() {
     }
 }
 
-// Function to blink LEDs red
-void blinkRedLEDs() {
-    fill_solid(leds, NUM_LEDS, CRGB::Red); // Turn all LEDs red
-    FastLED.show();
-    delay(500); // Delay for 500ms
-    fill_solid(leds, NUM_LEDS, CRGB::Black); // Turn off LEDs
-    FastLED.show();
-    delay(500); // Delay for 500ms
-}
+
 
 void handleRoot() {
     // Get the current song title from the API
     String currentSongTitle = getSongTitle();
     String storedSongTitle = readSongTitleFromEEPROM(); // Get the stored song title from EEPROM
 
-    // Check if the song titles match
-    if (currentSongTitle.equalsIgnoreCase(storedSongTitle)) {
-        blockLEDUpdates = true; // Block other LED updates
-    } else {
-        blockLEDUpdates = false; // Unblock LED updates
-    }
+   
 
-    // Handle LED behavior based on blockLEDUpdates
-    if (blockLEDUpdates) {
-        while (blockLEDUpdates) { // Continuously blink red LEDs until unblocked
-            blinkRedLEDs();
-            // Recheck if the titles still match to possibly exit the loop
-            currentSongTitle = getSongTitle();
-            storedSongTitle = readSongTitleFromEEPROM();
-            if (!currentSongTitle.equalsIgnoreCase(storedSongTitle)) {
-                blockLEDUpdates = false;
-                break;
-            }
-        }
-    } else {
-        handleCO2LEDs(); // Update CO2 LEDs if not blocked
-    }
+
 
     // Format the values for display
     String temperatureString = String(temperature, 1) + " °C"; // Format temperature
@@ -551,28 +526,46 @@ void setup() {
     displayCenteredText("HEJ", 2, 15);
 }
 
+
+
 void loop() {
     unsigned long currentMillis = millis();
 
     // Set unified sensor check interval to 45 seconds (45,000 milliseconds)
     const unsigned long sensorCheckInterval = 45000;
-    
+
     // Check for track title and temperature update at the unified interval
     if (currentMillis - previousTitleCheckMillis >= sensorCheckInterval) {
         previousTitleCheckMillis = currentMillis;
-        
+
         // Check for the current song title
         String storedSongTitle = readSongTitleFromEEPROM();  // Get the stored song title
         String currentSongTitle = getSongTitle();  // Get the current track title from API
 
-        // If the stored song title matches the current track title, do something
+        // If the stored song title matches the current track title, start blinking red LEDs
         if (caseInsensitiveCompare(storedSongTitle.c_str(), currentSongTitle.c_str())) {
-            Serial.println("Playing stored song: " + currentSongTitle);
-            blinkRedLEDs(); // Add your logic to trigger actions
+            isBlinking = true; // Set flag to indicate LED control for blinking
+        } else {
+            isBlinking = false; // Clear flag to return to normal LED behavior
         }
 
         // Update temperature right after checking the song title
         updateTemperature(); // Holfuy temp parsing
+    }
+
+    // Handle LED behavior based on the flag
+    if (isBlinking) {
+        // Blink the LEDs red continuously if the flag is set
+        blinkRedLEDs();
+    } else {
+        // Normal LED handling and CO2 display when not blinking
+        if (!hasReceivedReading) {
+            fill_solid(leds, NUM_LEDS, CRGB::White);
+            FastLED.show();
+            displayCenteredText("OFF", 2, 15);
+        } else {
+            handleCO2LEDs();
+        }
     }
 
     // Existing BLE scan logic
@@ -582,16 +575,26 @@ void loop() {
         Serial.println("Scanning...");
     }
 
-    // Handle CO2 sensor readings and LED display
-    if (!hasReceivedReading) {
-        fill_solid(leds, NUM_LEDS, CRGB::White);
-        FastLED.show();
-        displayCenteredText("OFF", 2, 15);
-    } else {
-        handleCO2LEDs();
-    }
-
     // Handle OTA updates and web server requests
     ElegantOTA.loop();
     server.handleClient();
+}
+
+// Non-blocking blinkRedLEDs function
+void blinkRedLEDs() {
+    static unsigned long previousBlinkMillis = 0;
+    static bool isRed = false;
+    unsigned long currentMillis = millis();
+
+    if (currentMillis - previousBlinkMillis >= 500) { // 500ms interval
+        previousBlinkMillis = currentMillis;
+        isRed = !isRed; // Toggle between red and off
+
+        if (isRed) {
+            fill_solid(leds, NUM_LEDS, CRGB::Red); // Turn all LEDs red
+        } else {
+            fill_solid(leds, NUM_LEDS, CRGB::Black); // Turn off LEDs
+        }
+        FastLED.show();
+    }
 }
