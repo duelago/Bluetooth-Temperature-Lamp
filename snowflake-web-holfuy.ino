@@ -11,7 +11,7 @@
 #include <HTTPClient.h>  
 #include <ArduinoJson.h> 
 #include <EEPROM.h>  
-#include <WiFiClientSecure.h>
+
 
 #define SONG_TITLE_ADDRESS 0
 
@@ -33,17 +33,18 @@ Adafruit_SSD1306 display(128, 64, &Wire, OLED_RESET);
 SCD4x scd4x(SCD4x_SENSOR_SCD40);
 
 // Set the interval for all sensor checks to 45 seconds (45,000 milliseconds)
-const unsigned long sensorCheckInterval = 45000;
+
 unsigned long previousCO2CheckMillis = 0;
 unsigned long previousTitleCheckMillis = 0;
-unsigned long lastUpdateTime = 0;
+unsigned long previousTemperatureUpdateMillis = 0; // Add a variable to track temperature update time
+const unsigned long sensorCheckInterval = 45000; // 45 seconds (45,000 milliseconds)
 
 const char* apiUrl = "https://listenapi.planetradio.co.uk/api9.2/nowplaying/mme";
 
 unsigned long previousMillis = 0; // Stores the last time BLE scan was triggered
 const unsigned long scanInterval = 10000; // Time between BLE scans (e.g., 10 seconds)
 
-WiFiClientSecure client;
+
 const char* apiHost = "api.holfuy.com";
 
 // The updated interval for all checks
@@ -128,55 +129,35 @@ void handleSetSongTitle() {
 
 String getSongTitle() {
     HTTPClient http;
-    const int maxRetries = 2;         // Number of times to retry the request
-    const int retryDelay = 5000;      // Delay between retries in milliseconds
-    const int timeout = 10000;        // Timeout for the HTTP request in milliseconds
+    http.begin(apiUrl);
+    int httpResponseCode = http.GET();
 
-    for (int attempt = 1; attempt <= maxRetries; ++attempt) {
-        http.begin(apiUrl);
-        http.setTimeout(timeout);     // Set the timeout for the request
-        int httpResponseCode = http.GET();
+    if (httpResponseCode > 0) {
+        String payload = http.getString();
+        Serial.println("HTTP Response: " + payload);
 
-        if (httpResponseCode > 0) {
-            // Successful HTTP request
-            String payload = http.getString();
-            Serial.println("HTTP Response: " + payload);
+        // Parse JSON
+        StaticJsonDocument<1024> doc;
+        DeserializationError error = deserializeJson(doc, payload);
 
-            // Parse JSON
-            StaticJsonDocument<1024> doc;
-            DeserializationError error = deserializeJson(doc, payload);
-
-            if (error) {
-                Serial.print("JSON Deserialization failed: ");
-                Serial.println(error.f_str());
-                return "Error parsing JSON";
-            }
-
-            // Check if the "TrackTitle" key exists and extract it
-            if (doc.containsKey("TrackTitle")) {
-                const char* songTitle = doc["TrackTitle"];
-                return songTitle ? String(songTitle) : "No song data";
-            } else {
-                Serial.println("Key 'TrackTitle' not found in JSON");
-                return "No song data";
-            }
-        } else {
-            // HTTP request failed, print error and retry
-            Serial.print("HTTP GET request failed (Attempt ");
-            Serial.print(attempt);
-            Serial.print("), error: ");
-            Serial.println(http.errorToString(httpResponseCode).c_str());
-
-            if (attempt < maxRetries) {
-                delay(retryDelay);  // Wait before retrying
-            }
+        if (error) {
+            Serial.print("JSON Deserialization failed: ");
+            Serial.println(error.f_str());
+            return "Error parsing JSON";
         }
 
-        http.end();  // End the HTTP request to free resources
+        // Extract the song title from the JSON response
+        // Adjusted to match the correct JSON structure
+        const char* songTitle = doc["TrackTitle"];
+        return songTitle ? String(songTitle) : "No song data";
+    } else {
+        Serial.print("HTTP GET request failed, error: ");
+        Serial.println(http.errorToString(httpResponseCode).c_str());
+        return "HTTP error";
     }
-
-    return "HTTP error after multiple retries";
+    http.end();
 }
+
 
 
 // Function to compare two strings case-insensitively
@@ -257,51 +238,57 @@ void displayCenteredText(String text, int textSize, int yPosition) {
     display.display();
 }
 
-// Function to update the temperature from the JSON source
 void updateTemperature() {
-    client.setInsecure();
-    if (!client.connect(apiHost, 443)) {
+    HTTPClient client;
+
+    // Begin the HTTP request to the API
+    if (!client.begin("https://api.holfuy.com/live/?s=214&pw=correcthorsebatterystaple&m=JSON&tu=C&su=m/s")) {
         Serial.println(F("Connection failed"));
         return;
     }
 
-    // Make the HTTP request
-    client.print(F("GET /live/?s=214&pw=correcthorsebatterystaple&m=JSON&tu=C&su=m/s HTTP/1.1\r\n"));
-    client.print(F("Host: "));
-    client.print(apiHost);
-    client.print(F("\r\nCache-Control: no-cache\r\n\r\n"));
+    // Send the HTTP GET request
+    int httpCode = client.GET();
 
-    // Wait for a response from the server
-    while (client.connected() && !client.available()) {
-        delay(10);  // Small delay to prevent watchdog timer resets
-    }
+    // Check if the GET request was successful
+    if (httpCode > 0) {
+        String payload = client.getString();  // Get the response payload
 
-    // Check if a valid response is received
-    if (!client.find("\r\n\r\n")) {
-        Serial.println(F("Invalid response"));
-        return;
-    }
+        // Print the response to the Serial monitor
+        Serial.println("Response: " + payload);
 
-    // Parse the JSON response
-    StaticJsonDocument<384> doc;
-    DeserializationError error = deserializeJson(doc, client);
+        // Parse the JSON response
+        StaticJsonDocument<384> doc;
+        DeserializationError error = deserializeJson(doc, payload);
 
-    if (!error) {
-        float temp = doc["temperature"];
-        Serial.print("Temp Holfuy: ");
-        Serial.println(temp);
+        if (!error) {
+            // Successfully parsed the JSON, get the temperature
+            float temp = doc["temperature"];
+            Serial.print("Temp Holfuy: ");
+            Serial.println(temp);
 
-        int roundedTemperature = round(temp);
-        Serial.print("Rounded Temp: ");
-        Serial.println(roundedTemperature);
+            // Round the temperature and print
+            int roundedTemperature = round(temp);
+            Serial.print("Rounded Temp: ");
+            Serial.println(roundedTemperature);
 
-        setTemperatureLEDColorHolfuy(roundedTemperature);  // Set LED color based on temperature
-        temperature = roundedTemperature;
+            // Set the LED color based on the temperature
+            setTemperatureLEDColor(roundedTemperature);
+            temperature = roundedTemperature;  // Store the temperature
+        } else {
+            // Handle JSON parsing error
+            Serial.print(F("JSON deserialization failed: "));
+            Serial.println(error.f_str());
+        }
     } else {
-        Serial.print(F("JSON deserialization failed: "));
-        Serial.println(error.f_str());
+        // If the GET request failed
+        Serial.println("HTTP request failed, error code: " + String(httpCode));
     }
+
+    // Close the connection
+    client.end();
 }
+
 
 void setTemperatureLEDColorHolfuy(float roundedTemperature) {
     if (roundedTemperature >= -50 && roundedTemperature < -5) {
@@ -539,13 +526,11 @@ void setup() {
 
 
 
+
 void loop() {
     unsigned long currentMillis = millis();
 
     // Set unified sensor check interval to 45 seconds (45,000 milliseconds)
-    const unsigned long sensorCheckInterval = 45000;
-
-    // Check for track title and temperature update at the unified interval
     if (currentMillis - previousTitleCheckMillis >= sensorCheckInterval) {
         previousTitleCheckMillis = currentMillis;
 
@@ -559,9 +544,6 @@ void loop() {
         } else {
             isBlinking = false; // Clear flag to return to normal LED behavior
         }
-
-        // Update temperature right after checking the song title
-        updateTemperature(); // Holfuy temp parsing
     }
 
     // Handle LED behavior based on the flag
@@ -584,6 +566,12 @@ void loop() {
         previousMillis = currentMillis;
         pBLEScan->start(scanTime, false);
         Serial.println("Scanning...");
+    }
+
+    // Update temperature every 45 seconds
+    if (currentMillis - previousTemperatureUpdateMillis >= sensorCheckInterval) {
+        previousTemperatureUpdateMillis = currentMillis;
+        updateTemperature(); // Update temperature every 45 seconds
     }
 
     // Handle OTA updates and web server requests
