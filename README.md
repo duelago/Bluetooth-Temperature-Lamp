@@ -96,7 +96,7 @@ I övrigt är det bara att följa instruktionerna för blåtandslampan. Skillnad
 <img width="1316" alt="Screenshot 2024-11-14 at 18 16 51" src="https://github.com/user-attachments/assets/9654d1a4-1387-418b-aa64-a086f973d8fc">
 
 <h3>Snowflake Web</h3>
-Jag kunde inte låta bli så i denna versionen kan du varna för Last Christmas på Megapol, aka Whamageddonlampan, samt se data i en lokal webserver. Denna lampa kräver dok lite installation för att funka och är sämre att ge bort i present, men här har du allt lull-lull. 
+Jag kunde inte låta bli så i denna versionen kan du varna för Last Christmas på Megapol, aka Whamageddonlampan, samt se data i en lokal webserver. Denna lampa kräver dock lite installation för att funka och är sämre att ge bort i present, men här har du allt lull-lull. 
 <img width="797" alt="Screenshot 2024-11-16 at 15 49 35" src="https://github.com/user-attachments/assets/f29bcf2c-4555-48fc-9b02-c113abb95836">
 
 
