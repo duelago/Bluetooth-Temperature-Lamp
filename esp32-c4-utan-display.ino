@@ -1,6 +1,6 @@
 # Kompilerade med Visual Studio Platformio för att få det att funka
 # Detta behövs i din platformio.ini
-# Detta med en liten esp32c4 https://www.aliexpress.com/item/1005006960134338.html
+# Esp32c4 https://www.aliexpress.com/item/1005006960134338.html
 #
 # [env:seeed_xiao_esp32c3]
 # platform = espressif32
