@@ -1,14 +1,14 @@
-# Kompilerade med Visual Studio Platformio för att få det att funka
-# Detta behövs i din platformio.ini
-# Esp32c4 https://www.aliexpress.com/item/1005006960134338.html
-#
-# [env:seeed_xiao_esp32c3]
-# platform = espressif32
-# board = seeed_xiao_esp32c3
-# framework = arduino
-# lib_deps = 
-# 	h2zero/NimBLE-Arduino@^1.4.2
-# 	fastled/FastLED@^3.9.4
+// Kompilerade med Visual Studio Platformio för att få det att funka
+// Detta behövs i din platformio.ini
+// Esp32c4 https://www.aliexpress.com/item/1005006960134338.html
+//
+// [env:seeed_xiao_esp32c3]
+// platform = espressif32
+// board = seeed_xiao_esp32c3
+// framework = arduino
+// lib_deps = 
+//	h2zero/NimBLE-Arduino@^1.4.2
+// 	fastled/FastLED@^3.9.4
 
 
 
