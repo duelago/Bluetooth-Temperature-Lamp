@@ -141,6 +141,7 @@ void setup() {
   // Initialize FastLED
   FastLED.addLeds<WS2812, LED_PIN, RGB>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
   leds[0] = 0x000000;  // Start with LED off
+  FastLED.setBrightness(255);
   FastLED.show();
 
   // Initialize BLE
