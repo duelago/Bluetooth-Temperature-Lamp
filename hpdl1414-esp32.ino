@@ -1,3 +1,20 @@
+
+// +---------------+-----------------+
+// | GPIO 27       | HPDL1414 DB0   |
+// | GPIO 28       | HPDL1414 DB1   |
+// | GPIO 29       | HPDL1414 DB2   |
+// | GPIO 30       | HPDL1414 DB3   |
+// | GPIO 31       | HPDL1414 DB4   |
+// | GPIO 32       | HPDL1414 DB5   |
+// | GPIO 21       | HPDL1414 DB6   |
+// | GPIO 25       | HPDL1414 A0    |
+// | GPIO 26       | HPDL1414 A1    |
+// | GPIO 33       | HPDL1414 WR    |
+// | ESP32 VIN     | HPDL1414 VCC   |
+// | ESP32 GND     | HPDL1414 GND   |
+    
+
+
 #include <FastLED.h>
 #include <NimBLEDevice.h>
 #include <HPDL1414.h>
