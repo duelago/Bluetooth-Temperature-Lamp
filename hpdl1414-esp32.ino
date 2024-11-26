@@ -1,20 +1,3 @@
-
-// +---------------+-----------------+
-// | GPIO 27       | HPDL1414 DB0   |
-// | GPIO 28       | HPDL1414 DB1   |
-// | GPIO 29       | HPDL1414 DB2   |
-// | GPIO 30       | HPDL1414 DB3   |
-// | GPIO 31       | HPDL1414 DB4   |
-// | GPIO 32       | HPDL1414 DB5   |
-// | GPIO 21       | HPDL1414 DB6   |
-// | GPIO 25       | HPDL1414 A0    |
-// | GPIO 26       | HPDL1414 A1    |
-// | GPIO 33       | HPDL1414 WR    |
-// | ESP32 VIN     | HPDL1414 VCC   |
-// | ESP32 GND     | HPDL1414 GND   |
-    
-
-
 #include <FastLED.h>
 #include <NimBLEDevice.h>
 #include <HPDL1414.h>
@@ -25,14 +8,14 @@
 CRGB leds[NUM_LEDS];
 
 // HPDL1414 pin configuration
-#define A0_PIN 25
-#define A1_PIN 26
-#define WR_PIN 33
+#define A0_PIN 19
+#define A1_PIN 21
+#define WR_PIN 22
 #define NUM_DB_PINS 7
 #define NUM_ADDR_PINS 2
 
-const byte dbPins[NUM_DB_PINS] = {27, 28, 29, 30, 31, 32, 21};
-const byte addrPins[NUM_ADDR_PINS] = {A0_PIN, A1_PIN};
+const byte dbPins[NUM_DB_PINS] = {12, 13, 14, 15, 16, 17, 18}; // Updated DB pins
+const byte addrPins[NUM_ADDR_PINS] = {A0_PIN, A1_PIN};         // Updated address pins
 const byte otherPin = 0;
 
 HPDL1414 hpdl(dbPins, addrPins, &otherPin, WR_PIN);
