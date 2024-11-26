@@ -14,7 +14,7 @@ CRGB leds[NUM_LEDS];
 #define NUM_DB_PINS 7
 #define NUM_ADDR_PINS 2
 
-const byte dbPins[NUM_DB_PINS] = {12, 13, 14, 15, 16, 17, 18}; // Updated DB pins
+const byte dbPins[NUM_DB_PINS] = {12, 13, 14, 15, 25, 26, 27}; // Updated DB pins
 const byte addrPins[NUM_ADDR_PINS] = {A0_PIN, A1_PIN};         // Updated address pins
 const byte otherPin = 0;
 
