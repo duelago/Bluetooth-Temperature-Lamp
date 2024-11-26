@@ -1,6 +1,3 @@
-// Test with the old retro HPDL1414 display
-
-
 #include <FastLED.h>
 #include <NimBLEDevice.h>
 #include <HPDL1414.h>
@@ -14,13 +11,18 @@ CRGB leds[NUM_LEDS];
 #define A0_PIN 25
 #define A1_PIN 26
 #define WR_PIN 33
-#define DB_PINS {27, 28, 29, 30, 31, 32, 21}
+#define NUM_DB_PINS 7
+#define NUM_ADDR_PINS 2
 
-HPDL1414 hpdl({A0_PIN, A1_PIN}, DB_PINS, WR_PIN);
+const byte dbPins[NUM_DB_PINS] = {27, 28, 29, 30, 31, 32, 21};
+const byte addrPins[NUM_ADDR_PINS] = {A0_PIN, A1_PIN};
+const byte otherPin = 0;
+
+HPDL1414 hpdl(dbPins, addrPins, &otherPin, WR_PIN);
 
 float temperature = 0.0;
 bool hasReceivedReading = false;
-const std::string targetMacAddress = "34:EC:B6:65:16:FB";
+const std::string targetMacAddress = "34:ec:b6:65:de:b2";
 
 NimBLEScan* pBLEScan;
 const int scanTime = 5;
@@ -45,8 +47,6 @@ void decodeServiceData(const std::string& payload) {
 
 void displayTemperature(int temp) {
     hpdl.clear();
-    hpdl.print("TEMP");
-    hpdl.setCursor(0, 1);  // Second line
     hpdl.print(String(temp) + "C");
 }
 
