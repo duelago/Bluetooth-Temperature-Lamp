@@ -8,17 +8,16 @@
 CRGB leds[NUM_LEDS];
 
 // HPDL1414 pin configuration
-#define A0_PIN 19
-#define A1_PIN 21
-#define WR_PIN 22
+#define A0_PIN 32
+#define A1_PIN 34
+#define WR_PIN 15
 #define NUM_DB_PINS 7
 #define NUM_ADDR_PINS 2
 
-const byte dbPins[NUM_DB_PINS] = {12, 13, 14, 15, 25, 26, 27}; // Updated DB pins
+const byte dbPins[NUM_DB_PINS] = {13, 12, 14, 27, 26, 25, 33}; // Updated DB pins
 const byte addrPins[NUM_ADDR_PINS] = {A0_PIN, A1_PIN};         // Updated address pins
-const byte otherPin = 0;
-
-HPDL1414 hpdl(dbPins, addrPins, &otherPin, WR_PIN);
+const byte wrenPins[] = {WR_PIN};
+HPDL1414 hpdl(dbPins, addrPins, wrenPins, sizeof(wrenPins));
 
 float temperature = 0.0;
 bool hasReceivedReading = false;
