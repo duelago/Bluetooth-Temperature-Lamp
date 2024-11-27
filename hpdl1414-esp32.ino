@@ -46,8 +46,11 @@ void decodeServiceData(const std::string& payload) {
 
 void displayTemperature(int temp) {
     hpdl.clear();
-    hpdl.print(String(temp) + "C");
+    hpdl.print(temp);
 }
+
+
+
 
 class MyAdvertisedDeviceCallbacks : public NimBLEAdvertisedDeviceCallbacks {
     void onResult(NimBLEAdvertisedDevice* advertisedDevice) {
