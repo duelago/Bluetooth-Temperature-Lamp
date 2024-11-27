@@ -1,4 +1,5 @@
 // HPDL1414 - ESP32 WROOM 38 pin
+// Googla bild på pinouten för HPDL1414
 
 // 1 - 25
 // 2 - 26
