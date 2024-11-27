@@ -8,8 +8,8 @@
 CRGB leds[NUM_LEDS];
 
 // HPDL1414 pin configuration
-#define A0_PIN 32
-#define A1_PIN 34
+#define A0_PIN 22
+#define A1_PIN 23
 #define WR_PIN 15
 #define NUM_DB_PINS 7
 #define NUM_ADDR_PINS 2
@@ -47,7 +47,9 @@ void decodeServiceData(const std::string& payload) {
 void displayTemperature(int temp) {
     hpdl.clear();
     hpdl.print(temp);
+    
 }
+
 
 
 
