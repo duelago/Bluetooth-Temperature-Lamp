@@ -46,9 +46,29 @@ void decodeServiceData(const std::string& payload) {
 
 void displayTemperature(int temp) {
     hpdl.clear();
-    hpdl.print(temp);
+  
+    // Convert the temperature to a string
+    String tempStr = String(temp);
     
+    // Check the length of the string and adjust the positions
+    if (tempStr.length() == 1) {
+        // For two-digit values like 12, print '___1'
+        hpdl.print("   ");
+        hpdl.print(tempStr);
+    } else if (tempStr.length() == 2) {
+        // For three-digit values like 123, print '___12'
+        hpdl.print("  ");
+        hpdl.print(tempStr);
+     } else if (tempStr.length() == 3) {
+        // For three-digit values like 123, print '_123'
+        hpdl.print(" ");
+        hpdl.print(tempStr);
+    } else {
+        // For four-digit values like 1234, print the number normally
+        hpdl.print(temp);
+    }
 }
+
 
 
 
@@ -97,7 +117,7 @@ void setup() {
     pBLEScan->setWindow(99);
     pBLEScan->setActiveScan(true);
 
-    hpdl.print("INIT");
+    hpdl.print("TEMP");
 }
 
 float lastTemperature = -999.0;
