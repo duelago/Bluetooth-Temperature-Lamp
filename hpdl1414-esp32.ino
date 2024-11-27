@@ -1,3 +1,23 @@
+// HPDL1414 - ESP32 WROOM 38 pin
+
+// 1 - 25
+// 2 - 26
+// 3 - 35
+// 4 - 23
+// 5 - 22
+// 6 - VIN
+// 7 - GND
+// 8 - 13
+// 9 - 12
+// 10 - 14
+// 11 - 27
+// 12 - 33
+
+
+
+
+
+
 #include <FastLED.h>
 #include <NimBLEDevice.h>
 #include <HPDL1414.h>
