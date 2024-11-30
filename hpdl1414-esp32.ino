@@ -22,6 +22,10 @@
 #include <FastLED.h>
 #include <NimBLEDevice.h>
 #include <HPDL1414.h>
+#include <WiFi.h>
+#include <WiFiManager.h>
+#include <NTPClient.h>
+#include <WiFiUdp.h>
 
 #define NUM_LEDS 1
 #define DATA_PIN 4
@@ -43,6 +47,15 @@ HPDL1414 hpdl(dbPins, addrPins, wrenPins, sizeof(wrenPins));
 float temperature = 0.0;
 bool hasReceivedReading = false;
 const std::string targetMacAddress = "34:ec:b6:65:de:b2";
+
+// NTP client setup
+WiFiUDP udp;
+NTPClient timeClient(udp, "pool.ntp.org", 3600, 60000);  // Swedish time zone (UTC +1)
+
+// Variables to store time
+int lastSecond = -1;
+unsigned long lastUpdate = 0;
+
 
 NimBLEScan* pBLEScan;
 const int scanTime = 5;
@@ -122,8 +135,15 @@ void setLEDColor(float roundedTemperature) {
 
 void setup() {
     Serial.begin(115200);
+
+    WiFiManager wifiManager;
+    wifiManager.autoConnect("Retrolampan"); 
+
+
     hpdl.begin();
     hpdl.clear();
+
+
 
     FastLED.addLeds<WS2811, DATA_PIN, RGB>(leds, NUM_LEDS);
     FastLED.setBrightness(200);
@@ -143,7 +163,52 @@ void setup() {
 
 float lastTemperature = -999.0;
 
-void loop() {
+void updateDisplay() {
+  // Get current time from NTP client
+  int hours = timeClient.getHours();
+  int minutes = timeClient.getMinutes();
+
+  // Format hours and minutes (hours in 12-hour format)
+  int displayHours = hours % 12;
+  if (displayHours == 0) {
+    displayHours = 12;  // Show 12 instead of 0
+  }
+
+  // Split minutes into tens and ones
+  int tensOfMinutes = minutes / 10;
+  int onesOfMinutes = minutes % 10;
+
+  // Clear previous display
+  hpdl.clear();
+
+  // Display the hours (position 1) and tens of minutes (position 3)
+  hpdl.setCursor(0);      // Position 1 (hours)
+  hpdl.write(displayHours + '0'); // Convert to ASCII
+  hpdl.setCursor(2);      // Position 3 (tens of minutes)
+  hpdl.write(tensOfMinutes + '0'); // Convert to ASCII
+  
+  // Display the colon in position 2
+  hpdl.setCursor(1);      // Position 2 (colon)
+  hpdl.write(':');
+
+  // Display the ones of minutes (position 4)
+  hpdl.setCursor(3);      // Position 4 (ones of minutes)
+  hpdl.write(onesOfMinutes + '0'); // Convert to ASCII
+
+
+}
+
+void loop() 
+{
+  // Update time every 30 seconds
+  if (millis() - lastUpdate >= 15000) {
+    lastUpdate = millis();
+    updateDisplay();
+  }
+
+  // Non-blocking NTP time update
+  timeClient.update();
+
     pBLEScan->start(scanTime, false);
     if (!hasReceivedReading) {
         leds[0] = CRGB::White;
@@ -154,5 +219,5 @@ void loop() {
         lastTemperature = temperature;
         displayTemperature((int)round(temperature));
     }
-    delay(30000);
+    delay(15000);
 }
