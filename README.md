@@ -100,7 +100,8 @@ Jag kunde inte låta bli så i denna versionen kan du varna för Last Christmas 
 <img width="797" alt="Screenshot 2024-11-16 at 15 49 35" src="https://github.com/user-attachments/assets/f29bcf2c-4555-48fc-9b02-c113abb95836">
 
 <h3>Retroversion med HPDL1414 skärm</h3>
-![retrolampan](https://github.com/user-attachments/assets/232cfc37-d65a-46ed-b4d2-e95451664242)
+![retrolampan](https://github.com/user-attachments/assets/904e326f-fa0a-4155-b1db-9411c7186aa5)
+
 https://www.aliexpress.com/item/32604923707.html
 
 
