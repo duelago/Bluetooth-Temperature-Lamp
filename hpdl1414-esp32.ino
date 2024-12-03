@@ -181,22 +181,28 @@ void updateDisplay() {
   // Clear previous display
   hpdl.clear();
 
-  // Display the hours (position 1) and tens of minutes (position 3)
-  hpdl.setCursor(0);      // Position 1 (hours)
-  hpdl.write(displayHours + '0'); // Convert to ASCII
-  hpdl.setCursor(2);      // Position 3 (tens of minutes)
-  hpdl.write(tensOfMinutes + '0'); // Convert to ASCII
-  
-  // Display the colon in position 2
-  hpdl.setCursor(1);      // Position 2 (colon)
-  hpdl.write(':');
+  // Display hours
+  hpdl.setCursor(0);          // Position 1
+  if (displayHours >= 10) {   // Handle two-digit hours
+    hpdl.write((displayHours / 10) + '0'); // First digit
+    hpdl.setCursor(1);        // Position 2
+    hpdl.write((displayHours % 10) + '0'); // Second digit
+    hpdl.setCursor(2);        // Move directly to tens of minutes
+  } else {                    // Handle single-digit hours
+    hpdl.write(displayHours + '0');
+    hpdl.setCursor(1);        // Position for colon
+    hpdl.write(':');          // Display colon
+    hpdl.setCursor(2);        // Position 3 for tens of minutes
+  }
 
-  // Display the ones of minutes (position 4)
-  hpdl.setCursor(3);      // Position 4 (ones of minutes)
-  hpdl.write(onesOfMinutes + '0'); // Convert to ASCII
+  // Display tens of minutes
+  hpdl.write(tensOfMinutes + '0');
 
-
+  // Display ones of minutes
+  hpdl.setCursor(3);          // Position 4
+  hpdl.write(onesOfMinutes + '0');
 }
+
 
 void loop() 
 {
