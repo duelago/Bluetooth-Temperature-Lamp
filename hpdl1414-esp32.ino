@@ -1,24 +1,3 @@
-// HPDL1414 - ESP32 WROOM 38 pin
-// Googla bild på pinouten för HPDL1414
-
-// 1 - 25
-// 2 - 26
-// 3 - 35
-// 4 - 23
-// 5 - 22
-// 6 - 3.3V
-// 7 - GND
-// 8 - 13
-// 9 - 12
-// 10 - 14
-// 11 - 27
-// 12 - 33
-
-
-
-
-
-
 #include <FastLED.h>
 #include <NimBLEDevice.h>
 #include <HPDL1414.h>
@@ -39,8 +18,8 @@ CRGB leds[NUM_LEDS];
 #define NUM_DB_PINS 7
 #define NUM_ADDR_PINS 2
 
-const byte dbPins[NUM_DB_PINS] = {13, 12, 14, 27, 26, 25, 33}; // Updated DB pins
-const byte addrPins[NUM_ADDR_PINS] = {A0_PIN, A1_PIN};         // Updated address pins
+const byte dbPins[NUM_DB_PINS] = {13, 12, 14, 27, 26, 25, 33};
+const byte addrPins[NUM_ADDR_PINS] = {A0_PIN, A1_PIN};
 const byte wrenPins[] = {WR_PIN};
 HPDL1414 hpdl(dbPins, addrPins, wrenPins, sizeof(wrenPins));
 
@@ -50,15 +29,51 @@ const std::string targetMacAddress = "34:ec:b6:65:de:b2";
 
 // NTP client setup
 WiFiUDP udp;
-NTPClient timeClient(udp, "pool.ntp.org", 3600, 60000);  // Swedish time zone (UTC +1)
+NTPClient timeClient(udp, "pool.ntp.org", 0, 60000);  // UTC
+
+// Display state variables
+enum DisplayMode { SHOW_TIME, SHOW_TEMP };
+DisplayMode currentMode = SHOW_TIME;
+unsigned long lastModeChange = 0;
+const unsigned long modeDuration = 10000; // 10 seconds per mode
 
 // Variables to store time
 int lastSecond = -1;
 unsigned long lastUpdate = 0;
 
-
 NimBLEScan* pBLEScan;
 const int scanTime = 5;
+
+// Function to check if DST is in effect in Sweden
+bool isDST(int year, int month, int day, int hour) {
+    if (month < 3 || month > 10) return false;
+    if (month > 3 && month < 10) return true;
+    
+    int lastSunday;
+    if (month == 3) {
+        lastSunday = 31;
+        while (true) {
+            struct tm tm = {0, 0, 0, lastSunday, 2, year - 1900};
+            mktime(&tm);
+            if (tm.tm_wday == 0) break;
+            lastSunday--;
+        }
+        if (day > lastSunday) return true;
+        if (day == lastSunday && hour >= 1) return true;
+    } else {
+        lastSunday = 31;
+        while (true) {
+            struct tm tm = {0, 0, 0, lastSunday, 9, year - 1900};
+            mktime(&tm);
+            if (tm.tm_wday == 0) break;
+            lastSunday--;
+        }
+        if (day < lastSunday) return true;
+        if (day == lastSunday && hour < 1) return true;
+    }
+    
+    return false;
+}
 
 uint16_t decodeLittleEndianU16(uint8_t lowByte, uint8_t highByte) {
     return (uint16_t)((highByte << 8) | lowByte);
@@ -74,47 +89,64 @@ void decodeServiceData(const std::string& payload) {
 
         hasReceivedReading = true;
         setLEDColor(round(temperature));
-        displayTemperature((int)round(temperature));
     }
 }
 
 void displayTemperature(int temp) {
     hpdl.clear();
-  
-    // Convert the temperature to a string
     String tempStr = String(temp);
     
-    // Check the length of the string and adjust the positions
     if (tempStr.length() == 1) {
-        // For two-digit values like 12, print '___1'
         hpdl.print("   ");
         hpdl.print(tempStr);
     } else if (tempStr.length() == 2) {
-        // For three-digit values like 123, print '___12'
         hpdl.print("  ");
         hpdl.print(tempStr);
-     } else if (tempStr.length() == 3) {
-        // For three-digit values like 123, print '_123'
+    } else if (tempStr.length() == 3) {
         hpdl.print(" ");
         hpdl.print(tempStr);
     } else {
-        // For four-digit values like 1234, print the number normally
         hpdl.print(temp);
     }
 }
 
+void updateTimeDisplay() {
+    timeClient.update();
+    time_t epochTime = timeClient.getEpochTime();
+    struct tm *ptm = gmtime(&epochTime);
+    
+    bool dst = isDST(ptm->tm_year + 1900, ptm->tm_mon + 1, ptm->tm_mday, ptm->tm_hour);
+    int hour = ptm->tm_hour + 1 + (dst ? 1 : 0);
+    if (hour >= 24) hour -= 24;
+    
+    int minutes = ptm->tm_min;
+    int displayHours = hour % 12;
+    if (displayHours == 0) displayHours = 12;
 
+    hpdl.clear();
+    hpdl.setCursor(0);
+    if (displayHours >= 10) {
+        hpdl.write((displayHours / 10) + '0');
+        hpdl.setCursor(1);
+        hpdl.write((displayHours % 10) + '0');
+        hpdl.setCursor(2);
+    } else {
+        hpdl.write(displayHours + '0');
+        hpdl.setCursor(1);
+        hpdl.write(':');
+        hpdl.setCursor(2);
+    }
 
-
-
+    hpdl.write((minutes / 10) + '0');
+    hpdl.setCursor(3);
+    hpdl.write((minutes % 10) + '0');
+}
 
 class MyAdvertisedDeviceCallbacks : public NimBLEAdvertisedDeviceCallbacks {
     void onResult(NimBLEAdvertisedDevice* advertisedDevice) {
         if (advertisedDevice->getAddress().toString() == targetMacAddress) {
             if (advertisedDevice->haveServiceData()) {
                 decodeServiceData(advertisedDevice->getServiceData());
-            } else {
-                Serial.println("No service data available.");
             }
         }
     }
@@ -135,19 +167,13 @@ void setLEDColor(float roundedTemperature) {
 
 void setup() {
     Serial.begin(115200);
-
     WiFiManager wifiManager;
     wifiManager.autoConnect("Retrolampan"); 
 
-
     hpdl.begin();
     hpdl.clear();
-
-
-
     FastLED.addLeds<WS2811, DATA_PIN, RGB>(leds, NUM_LEDS);
     FastLED.setBrightness(200);
-
     leds[0] = CRGB::White;
     FastLED.show();
 
@@ -159,71 +185,30 @@ void setup() {
     pBLEScan->setActiveScan(true);
 
     hpdl.print("TEMP");
+    lastModeChange = millis();
 }
 
-float lastTemperature = -999.0;
+void loop() {
+    // Check if it's time to switch display mode
+    if (millis() - lastModeChange >= modeDuration) {
+        currentMode = (currentMode == SHOW_TIME) ? SHOW_TEMP : SHOW_TIME;
+        lastModeChange = millis();
+    }
 
-void updateDisplay() {
-  // Get current time from NTP client
-  int hours = timeClient.getHours();
-  int minutes = timeClient.getMinutes();
-
-  // Format hours and minutes (hours in 12-hour format)
-  int displayHours = hours % 12;
-  if (displayHours == 0) {
-    displayHours = 12;  // Show 12 instead of 0
-  }
-
-  // Split minutes into tens and ones
-  int tensOfMinutes = minutes / 10;
-  int onesOfMinutes = minutes % 10;
-
-  // Clear previous display
-  hpdl.clear();
-
-  // Display hours
-  hpdl.setCursor(0);          // Position 1
-  if (displayHours >= 10) {   // Handle two-digit hours
-    hpdl.write((displayHours / 10) + '0'); // First digit
-    hpdl.setCursor(1);        // Position 2
-    hpdl.write((displayHours % 10) + '0'); // Second digit
-    hpdl.setCursor(2);        // Move directly to tens of minutes
-  } else {                    // Handle single-digit hours
-    hpdl.write(displayHours + '0');
-    hpdl.setCursor(1);        // Position for colon
-    hpdl.write(':');          // Display colon
-    hpdl.setCursor(2);        // Position 3 for tens of minutes
-  }
-
-  // Display tens of minutes
-  hpdl.write(tensOfMinutes + '0');
-
-  // Display ones of minutes
-  hpdl.setCursor(3);          // Position 4
-  hpdl.write(onesOfMinutes + '0');
-}
-
-
-void loop() 
-{
-  // Update time every 30 seconds
-  if (millis() - lastUpdate >= 15000) {
-    lastUpdate = millis();
-    updateDisplay();
-  }
-
-  // Non-blocking NTP time update
-  timeClient.update();
-
-    pBLEScan->start(scanTime, false);
-    if (!hasReceivedReading) {
-        leds[0] = CRGB::White;
-        FastLED.show();
+    // Update the display based on current mode
+    if (currentMode == SHOW_TIME) {
+        updateTimeDisplay();
+    } else if (hasReceivedReading) {
+        displayTemperature((int)round(temperature));
+    } else {
         hpdl.clear();
         hpdl.print("OFF");
-    } else if (temperature != lastTemperature) {
-        lastTemperature = temperature;
-        displayTemperature((int)round(temperature));
     }
-    delay(15000);
+
+    // Run BLE scan every 5 seconds
+    if (millis() % 5000 < 100) {  // Roughly every 5 seconds
+        pBLEScan->start(scanTime, false);
+    }
+
+    delay(100);  // Small delay to prevent busy-waiting
 }
