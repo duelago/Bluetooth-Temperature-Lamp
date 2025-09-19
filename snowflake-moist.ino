@@ -2,7 +2,6 @@
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
-#include <SparkFun_SCD4x_Arduino_Library.h>
 #include <NimBLEDevice.h>
 #include <WiFiManager.h>
 #include <WebServer.h>
@@ -11,43 +10,25 @@
 #include <ArduinoJson.h> 
 #include <EEPROM.h>  
 
-
 #define SONG_TITLE_ADDRESS 0
-#define DRY_VALUE_ADDRESS 50
-#define WET_VALUE_ADDRESS 54
-#define NORMAL_THRESHOLD_ADDRESS 58
-#define DRY_THRESHOLD_ADDRESS 62
+#define MOISTURE_SENSOR_PIN 32  // GPIO32 (ADC1_CH4)
 
-#define SCREEN_WIDTH 128
-#define SCREEN_HEIGHT 64
 #define OLED_RESET -1
 #define NUM_LEDS 6
 #define DATA_PIN 4
 
 #define OLED_SDA 21
 #define OLED_SCL 22
-#define MOISTURE_SENSOR_PIN 32
 
 WebServer server(80);
 
 CRGB leds[NUM_LEDS];
-// Fixed Adafruit_SSD1306 constructor for older library version
 Adafruit_SSD1306 display(OLED_RESET);
-bool displayAvailable = false;  // Flag to track if display is connected
 
-// Moisture sensor variables
-const int moistureSamples = 8;
-int moistureReadings[moistureSamples];
-int moistureIdx = 0;
-int dryValue = 900;   
-int wetValue = 200;   
-int normalThreshold = 60;  
-int dryThreshold = 30;     
-
+// Set the interval for all sensor checks to 45 seconds (45,000 milliseconds)
 unsigned long previousMoistureCheckMillis = 0;
 unsigned long previousTitleCheckMillis = 0;
 unsigned long previousTemperatureUpdateMillis = 0;
-unsigned long previousWindUpdateMillis = 0; // Added missing variable
 const unsigned long sensorCheckInterval = 45000; // 45 seconds (45,000 milliseconds)
 
 const char* apiUrl = "https://listenapi.planetradio.co.uk/api9.2/nowplaying/mme";
@@ -60,13 +41,21 @@ const char* apiHost = "api.holfuy.com";
 // The updated interval for all checks
 const unsigned long updateInterval = 45000;  // 45 seconds in milliseconds
 
-float windSpeed = 0.0;
 float temperature = 0.0;
+float windSpeed = 0.0;
 bool hasReceivedReading = false;
 const std::string targetMacAddress = "38:1f:8d:97:bd:5d";
 
 // Global flag to control LED behavior
 bool isBlinking = false;
+
+// Moisture sensor variables
+int moistureValue = 0;
+int moisturePercent = 0;
+
+// Moisture sensor calibration values (adjust these based on your sensor)
+const int dryValue = 3000;    // Value when sensor is in dry air
+const int wetValue = 1000;    // Value when sensor is in water
 
 NimBLEScan* pBLEScan;
 const int scanTime = 5;
@@ -190,7 +179,7 @@ class MyAdvertisedDeviceCallbacks : public NimBLEAdvertisedDeviceCallbacks {
 // Function prototypes
 void displayCenteredText(String text, int textSize, int yPosition);
 void setTemperatureLEDColor(float roundedTemperature);
-
+void handleMoistureLEDs();
 void blinkRedGreen(int duration);
 uint16_t decodeLittleEndianU16(uint8_t lowByte, uint8_t highByte);  // Function prototype
 
@@ -218,8 +207,6 @@ void decodeServiceData(const std::string& payload) {
 
 // Function to display centered text on the OLED screen
 void displayCenteredText(String text, int textSize, int yPosition) {
-    if (!displayAvailable) return;  // Skip if display not available
-    
     display.clearDisplay();
     display.setTextSize(textSize);
     display.setTextColor(WHITE);
@@ -234,41 +221,6 @@ void displayCenteredText(String text, int textSize, int yPosition) {
     display.setCursor(xPosition, adjustedYPosition);
     display.print(text);
     display.display();
-}
-
-void writeMoistureCalibrationToEEPROM() {
-    EEPROM.put(DRY_VALUE_ADDRESS, dryValue);
-    EEPROM.put(WET_VALUE_ADDRESS, wetValue);
-    EEPROM.put(NORMAL_THRESHOLD_ADDRESS, normalThreshold);
-    EEPROM.put(DRY_THRESHOLD_ADDRESS, dryThreshold);
-    EEPROM.commit();
-}
-
-void readMoistureCalibrationFromEEPROM() {
-    EEPROM.get(DRY_VALUE_ADDRESS, dryValue);
-    EEPROM.get(WET_VALUE_ADDRESS, wetValue);
-    EEPROM.get(NORMAL_THRESHOLD_ADDRESS, normalThreshold);
-    EEPROM.get(DRY_THRESHOLD_ADDRESS, dryThreshold);
-    
-    if (dryValue == 0 || dryValue > 1023) dryValue = 900;
-    if (wetValue == 0 || wetValue > 1023) wetValue = 200;
-    if (normalThreshold <= 0 || normalThreshold > 100) normalThreshold = 60;
-    if (dryThreshold <= 0 || dryThreshold > 100) dryThreshold = 30;
-}
-
-void handleSetMoistureCalibration() {
-    String dryVal = server.arg("dryValue");
-    String wetVal = server.arg("wetValue");
-    String normalThresh = server.arg("normalThreshold");
-    String dryThresh = server.arg("dryThreshold");
-    
-    if (dryVal.length() > 0) dryValue = dryVal.toInt();
-    if (wetVal.length() > 0) wetValue = wetVal.toInt();
-    if (normalThresh.length() > 0) normalThreshold = normalThresh.toInt();
-    if (dryThresh.length() > 0) dryThreshold = dryThresh.toInt();
-    
-    writeMoistureCalibrationToEEPROM();
-    server.send(200, "text/html", "<html><body><h1>Moisture Calibration Saved!</h1><a href='/'>Back</a></body></html>");
 }
 
 void updateWind() {
@@ -306,46 +258,6 @@ void updateWind() {
     client.end();
 }
 
-// Moisture sensor functions
-int readSmoothedMoisture() {
-    moistureReadings[moistureIdx] = analogRead(MOISTURE_SENSOR_PIN);
-    moistureIdx = (moistureIdx + 1) % moistureSamples;
-    long sum = 0;
-    for (int i = 0; i < moistureSamples; i++) sum += moistureReadings[i];
-    return sum / moistureSamples;
-}
-
-int moistureToPercent(int raw) {
-    if (wetValue == dryValue) return 0;
-    long p = (long)(raw - dryValue) * 100L / (wetValue - dryValue);
-    p = 100 - p;
-    if (p < 0) p = 0;
-    if (p > 100) p = 100;
-    return (int)p;
-}
-
-void handleMoistureLEDs() {
-    unsigned long currentMillis = millis();
-    
-    if (currentMillis - previousMoistureCheckMillis >= sensorCheckInterval) {
-        previousMoistureCheckMillis = currentMillis;
-
-        int rawMoisture = readSmoothedMoisture();
-        int moisturePercent = moistureToPercent(rawMoisture);
-        
-        Serial.print("Raw Moisture: ");
-        Serial.print(rawMoisture);
-        Serial.print("  Moisture%: ");
-        Serial.println(moisturePercent);
-
-        if (moisturePercent < dryThreshold) fill_solid(leds + 4, 2, CRGB::Red);
-        else if (moisturePercent >= dryThreshold && moisturePercent < normalThreshold) fill_solid(leds + 4, 2, CRGB::Yellow);
-        else fill_solid(leds + 4, 2, CRGB::Green);
-
-        FastLED.show();
-    }
-}
-
 void setWindLEDColor(float speed) {
     // scale 0 - 25 m/s
     if (speed < 0) speed = 0;
@@ -379,25 +291,63 @@ void setTemperatureLEDColor(float roundedTemperature) {
     } else {
         fill_solid(leds, 2, 0x000000);  // Off
     }
+
     FastLED.show();
 }
 
+// Function to read moisture sensor and update LEDs
+void handleMoistureLEDs() {
+    unsigned long currentMillis = millis();
+    
+    // Check if 45 seconds have passed since the last moisture check
+    if (currentMillis - previousMoistureCheckMillis >= sensorCheckInterval) {
+        previousMoistureCheckMillis = currentMillis;  // Update the last check time
 
+        // Read the moisture sensor (12-bit ADC, 0-4095)
+        moistureValue = analogRead(MOISTURE_SENSOR_PIN);
+        
+        // Convert to percentage (0-100%)
+        moisturePercent = map(moistureValue, dryValue, wetValue, 0, 100);
+        moisturePercent = constrain(moisturePercent, 0, 100);
+        
+        Serial.print("Moisture Raw Value: ");
+        Serial.println(moistureValue);
+        Serial.print("Moisture Percentage: ");
+        Serial.print(moisturePercent);
+        Serial.println("%");
+
+        // Handle Moisture LED updates for the last two LEDs (indices 4 and 5)
+        if (moisturePercent >= 70) {
+            fill_solid(leds + 4, 2, CRGB::Green);   // Wet: >= 70%, Green
+        } else if (moisturePercent >= 40 && moisturePercent < 70) {
+            fill_solid(leds + 4, 2, CRGB::Yellow);  // OK: 40-69%, Yellow
+        } else {
+            fill_solid(leds + 4, 2, CRGB::Red);     // Dry: < 40%, Red - needs watering
+        }
+
+        FastLED.show();
+    }
+}
+
+// Function to update temperature (placeholder - this seems to be missing from original)
+void updateTemperature() {
+    // This function was called but not defined in the original code
+    // It appears to be intended for updating temperature display
+    if (hasReceivedReading) {
+        setTemperatureLEDColor(round(temperature));
+        displayCenteredText(String((int)round(temperature)), 2, 15);
+    }
+}
 
 void handleRoot() {
     // Get the current song title from the API
     String currentSongTitle = getSongTitle();
     String storedSongTitle = readSongTitleFromEEPROM(); // Get the stored song title from EEPROM
 
-    int rawMoisture = readSmoothedMoisture();
-    int moisturePercent = moistureToPercent(rawMoisture);
-
-    String windString = String(windSpeed, 1) + " m/s";
-    String moistureString = String(moisturePercent) + "%";
-
     // Format the values for display
     String temperatureString = String(temperature, 1) + " °C"; // Format temperature
-    
+    String moistureString = String(moisturePercent) + "%"; // Format moisture percentage
+
     // Generate the HTML content
     String htmlContent = R"rawliteral(
         <html>
@@ -479,8 +429,7 @@ void handleRoot() {
             <div class="container">
                 <h1>Snowflake Lamp</h1>
                 <p><b>Local temperature: )rawliteral" + temperatureString + R"rawliteral(</b></p>
-                <p><b>Wind Speed: )rawliteral" + windString + R"rawliteral(</b></p>
-
+                <p><b>Soil Moisture Level: )rawliteral" + moistureString + R"rawliteral(</b></p>
                 <h2>Whamageddon warning - Mix Megapol</h2>
                 <p>Playing now: )rawliteral" + currentSongTitle + R"rawliteral(</p>
                 <p>Warning for: )rawliteral" + storedSongTitle + R"rawliteral(</p>
@@ -501,75 +450,28 @@ void handleRoot() {
 
 void setup() {
     Serial.begin(115200);
-    
-    // Initialize WiFi first with proper error handling
-    Serial.println("Initializing WiFi...");
-    WiFi.mode(WIFI_STA); // Set WiFi to station mode
-    
-    // Try to initialize WiFiManager with error handling
     WiFiManager wifiManager;
-    
-    // Reset settings for testing - remove this line once working
-    // wifiManager.resetSettings();
-    
-    wifiManager.setDebugOutput(true);
-    wifiManager.setTimeout(180); // 3 minute timeout
-    
-    Serial.println("Starting WiFiManager...");
-    if (!wifiManager.autoConnect("Snowflake")) {
-        Serial.println("Failed to connect to WiFi and no access point created");
-        Serial.println("Continuing without WiFi...");
-        // Continue without WiFi - you can still access via Serial
-    } else {
-        Serial.println("WiFi connected successfully!");
-        Serial.print("IP address: ");
-        Serial.println(WiFi.localIP());
-    }
-    
-    // Initialize I2C
+    wifiManager.autoConnect("Snowflake");
     Wire.begin(OLED_SDA, OLED_SCL);
-    
-    // Try to initialize display, but don't halt if it fails
-    Serial.println("Attempting to initialize OLED display...");
     display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
-    
-    // Test if display is responding by trying to clear it
     display.clearDisplay();
-    delay(100);
-    
-    // Simple test to see if display is working
-    // If this doesn't cause I2C errors, display is available
-    Wire.beginTransmission(0x3C);
-    if (Wire.endTransmission() == 0) {
-        displayAvailable = true;
-        Serial.println("OLED display initialized successfully");
-        display.clearDisplay();
-        display.display();
-    } else {
-        displayAvailable = false;
-        Serial.println("OLED display not found - continuing without display");
-    }
     
     FastLED.addLeds<WS2811, DATA_PIN, RGB>(leds, NUM_LEDS);
     FastLED.setBrightness(200);
     FastLED.setMaxPowerInVoltsAndMilliamps(5, 500);  // Limit power to 5V and 500 mA
 
     EEPROM.begin(512);
-    for (int i = 0; i < moistureSamples; i++) moistureReadings[i] = 0;
-    readMoistureCalibrationFromEEPROM();
 
-    // Only start web server if WiFi is connected
-    if (WiFi.status() == WL_CONNECTED) {
-        server.on("/", HTTP_GET, handleRoot);  // Handle GET requests to '/'
-        server.on("/setSongTitle", HTTP_POST, handleSetSongTitle);  // Handle POST requests to '/setSongTitle'
-        server.on("/setMoistureCalibration", HTTP_POST, handleSetMoistureCalibration);
+    // Initialize moisture sensor pin
+    pinMode(MOISTURE_SENSOR_PIN, INPUT);
 
-        ElegantOTA.begin(&server);
-        server.begin();
-        Serial.println("Web server started");
-    } else {
-        Serial.println("Web server not started - no WiFi connection");
-    }
+    server.on("/", HTTP_GET, handleRoot);  // Handle GET requests to '/'
+    server.on("/setSongTitle", HTTP_POST, handleSetSongTitle);  // Handle POST requests to '/setSongTitle'
+
+    ElegantOTA.begin(&server);
+    server.begin();
+
+    // Remove CO2 sensor initialization - no longer needed
 
     NimBLEDevice::init("");
     pBLEScan = NimBLEDevice::getScan();
@@ -578,14 +480,8 @@ void setup() {
     pBLEScan->setWindow(99);
     pBLEScan->setActiveScan(true);
 
-    // Display "HEJ" on boot if display is available
-    if (displayAvailable) {
-        displayCenteredText("HEJ", 2, 15);
-    } else {
-        Serial.println("HEJ - Display not available, using Serial only");
-    }
-    
-    Serial.println("Setup complete!");
+    // Display "HEJ" on boot
+    displayCenteredText("HEJ", 2, 15);
 }
 
 void loop() {
@@ -598,7 +494,7 @@ void loop() {
         // Check for the current song title
         String storedSongTitle = readSongTitleFromEEPROM();  // Get the stored song title
         String currentSongTitle = getSongTitle();  // Get the current track title from API
-        
+
         // If the stored song title matches the current track title, start blinking red LEDs
         if (caseInsensitiveCompare(storedSongTitle.c_str(), currentSongTitle.c_str())) {
             isBlinking = true; // Set flag to indicate LED control for blinking
@@ -607,18 +503,12 @@ void loop() {
         }
     }
 
-    // Update wind data
-    if (currentMillis - previousWindUpdateMillis >= sensorCheckInterval) {
-        previousWindUpdateMillis = currentMillis;
-        updateWind();
-    }
-
     // Handle LED behavior based on the flag
     if (isBlinking) {
         // Blink the LEDs red continuously if the flag is set
         blinkRedLEDs();
     } else {
-        // Normal LED handling and CO2 display when not blinking
+        // Normal LED handling and moisture display when not blinking
         if (!hasReceivedReading) {
             fill_solid(leds, NUM_LEDS, CRGB::White);
             FastLED.show();
@@ -635,11 +525,15 @@ void loop() {
         Serial.println("Scanning...");
     }
 
-    // Handle OTA updates and web server requests (only if WiFi connected)
-    if (WiFi.status() == WL_CONNECTED) {
-        ElegantOTA.loop();
-        server.handleClient();
+    // Update temperature every 45 seconds
+    if (currentMillis - previousTemperatureUpdateMillis >= sensorCheckInterval) {
+        previousTemperatureUpdateMillis = currentMillis;
+        updateTemperature(); // Update temperature every 45 seconds
     }
+
+    // Handle OTA updates and web server requests
+    ElegantOTA.loop();
+    server.handleClient();
 }
 
 // Non-blocking blinkRedLEDs function
