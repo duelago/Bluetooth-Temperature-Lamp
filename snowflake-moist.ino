@@ -2,7 +2,6 @@
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
-#include <SparkFun_SCD4x_Arduino_Library.h>
 #include <NimBLEDevice.h>
 #include <WiFiManager.h>
 #include <WebServer.h>
@@ -12,6 +11,8 @@
 #include <EEPROM.h>  
 
 #define SONG_TITLE_ADDRESS 0
+#define DRY_VALUE_ADDRESS 50
+#define WET_VALUE_ADDRESS 54
 
 #define OLED_RESET -1
 #define NUM_LEDS 6
@@ -20,17 +21,15 @@
 #define OLED_SDA 21
 #define OLED_SCL 22
 
-#define CO2_SDA 17
-#define CO2_SCL 16
+#define MOISTURE_PIN 32
 
 WebServer server(80);
 
 CRGB leds[NUM_LEDS];
 Adafruit_SSD1306 display(OLED_RESET);
-SCD4x scd4x(SCD4x_SENSOR_SCD40);
 
 // Set the interval for all sensor checks to 45 seconds (45,000 milliseconds)
-unsigned long previousCO2CheckMillis = 0;
+unsigned long previousMoistureCheckMillis = 0;
 unsigned long previousTitleCheckMillis = 0;
 unsigned long previousTemperatureUpdateMillis = 0; // Add a variable to track temperature update time
 const unsigned long sensorCheckInterval = 45000; // 45 seconds (45,000 milliseconds)
@@ -53,20 +52,19 @@ const std::string targetMacAddress = "38:1f:8d:97:bd:5d";
 // Global flag to control LED behavior
 bool isBlinking = false;
 
+// Moisture sensor variables
+int moistureValue = 0;
+int dryValue = 3000;  // Default dry calibration value
+int wetValue = 1000;  // Default wet calibration value
+
 NimBLEScan* pBLEScan;
 const int scanTime = 5;
-
-// CO2 sensor thresholds and variables
-int co2High = 1300;
-int co2Low = 1200;
-uint16_t currentCO2 = 0;
-bool isCO2High = false;
 
 // Function prototypes
 void displayCenteredText(String text, int textSize, int yPosition);
 void setTemperatureLEDColor(float roundedTemperature);
 void setTemperatureLEDColorHolfuy(float roundedTemperature);
-void handleCO2LEDs();
+void handleMoistureLEDs();
 void blinkRedGreen(int duration);
 void blinkRedLEDs();
 void decodeServiceData(const std::string& payload);
@@ -132,6 +130,28 @@ void blinkRedGreen(int duration) {
     }
 }
 
+// Function to write values to EEPROM
+void writeDryValueToEEPROM(int value) {
+    EEPROM.writeInt(DRY_VALUE_ADDRESS, value);
+    EEPROM.commit();
+}
+
+void writeWetValueToEEPROM(int value) {
+    EEPROM.writeInt(WET_VALUE_ADDRESS, value);
+    EEPROM.commit();
+}
+
+// Function to read values from EEPROM
+int readDryValueFromEEPROM() {
+    int value = EEPROM.readInt(DRY_VALUE_ADDRESS);
+    return (value == 0 || value == -1) ? 3000 : value; // Default if not set
+}
+
+int readWetValueFromEEPROM() {
+    int value = EEPROM.readInt(WET_VALUE_ADDRESS);
+    return (value == 0 || value == -1) ? 1000 : value; // Default if not set
+}
+
 // Function to write the song title to EEPROM
 void writeSongTitleToEEPROM(const String& songTitle) {
     int len = songTitle.length();
@@ -160,6 +180,24 @@ void handleSetSongTitle() {
         writeSongTitleToEEPROM(songTitle);  // Store it in EEPROM
     }
     server.send(200, "text/html", "<html><body><h1>Song Title Saved!</h1><a href='/'>Back</a></body></html>");
+}
+
+// Function to handle calibration form
+void handleCalibration() {
+    String dryVal = server.arg("dryValue");
+    String wetVal = server.arg("wetValue");
+    
+    if (dryVal.length() > 0) {
+        dryValue = dryVal.toInt();
+        writeDryValueToEEPROM(dryValue);
+    }
+    
+    if (wetVal.length() > 0) {
+        wetValue = wetVal.toInt();
+        writeWetValueToEEPROM(wetValue);
+    }
+    
+    server.send(200, "text/html", "<html><body><h1>Calibration Values Saved!</h1><a href='/'>Back</a></body></html>");
 }
 
 // Function to make an HTTP request and parse JSON with retry and timeout settings
@@ -419,39 +457,42 @@ void setTemperatureLEDColor(float roundedTemperature) {
     FastLED.show();
 }
 
-void handleCO2LEDs() {
+void handleMoistureLEDs() {
     unsigned long currentMillis = millis();
     
-    // Check if 45 seconds have passed since the last CO2 check
-    if (currentMillis - previousCO2CheckMillis >= sensorCheckInterval) {
-        previousCO2CheckMillis = currentMillis;  // Update the last check time
+    // Check if 45 seconds have passed since the last moisture check
+    if (currentMillis - previousMoistureCheckMillis >= sensorCheckInterval) {
+        previousMoistureCheckMillis = currentMillis;  // Update the last check time
 
-        Serial.println("Reading CO2 sensor...");
-        if (scd4x.readMeasurement()) {
-            currentCO2 = scd4x.getCO2();
-            Serial.print("CO2 Level: ");
-            Serial.println(currentCO2);
+        Serial.println("Reading moisture sensor...");
+        moistureValue = analogRead(MOISTURE_PIN);
+        Serial.print("Moisture Value: ");
+        Serial.println(moistureValue);
+        Serial.print("Dry threshold: ");
+        Serial.println(dryValue);
+        Serial.print("Wet threshold: ");
+        Serial.println(wetValue);
 
-            // Handle CO2 LED updates for the last two LEDs
-            if (currentCO2 <= 650) {
-                fill_solid(leds + 4, 2, CRGB::Green);  // CO2: <= 650 ppm, Green
-            } else if (currentCO2 > 650 && currentCO2 <= 800) {
-                fill_solid(leds + 4, 2, CRGB::Yellow); // CO2: 651 - 800 ppm, Yellow
-            } else if (currentCO2 > 800 && currentCO2 <= 1000) {
-                fill_solid(leds + 4, 2, CRGB::Orange); // CO2: 801 - 1000 ppm, Orange
-            } else if (currentCO2 > 1000 && currentCO2 <= 1200) {
-                fill_solid(leds + 4, 2, CRGB::Red);    // CO2: 1001 - 1200 ppm, Red
-            } else if (currentCO2 > 1200 && currentCO2 <= 1299) {
-                fill_solid(leds + 4, 2, CRGB::Purple); // CO2: 1201 - 1299 ppm, Purple
-            } else {
-                blinkRedGreen(20000);
-            }
-
-            FastLED.show();
-        } else {
-            Serial.println("Failed to read CO2 sensor - I2C communication error");
-            // Don't change LED state if sensor read fails
+        // Calculate moisture percentage (inverted because lower values = more moisture)
+        float moisturePercent = 0;
+        if (dryValue != wetValue) {
+            moisturePercent = ((float)(dryValue - moistureValue) / (float)(dryValue - wetValue)) * 100;
+            moisturePercent = constrain(moisturePercent, 0, 100);
         }
+        
+        Serial.print("Moisture percentage: ");
+        Serial.println(moisturePercent);
+
+        // Handle moisture LED updates for the last three LEDs (indices 3, 4, 5)
+        if (moisturePercent <= 30) {
+            fill_solid(leds + 3, 3, CRGB::Red);    // Dry: Red
+        } else if (moisturePercent > 30 && moisturePercent <= 70) {
+            fill_solid(leds + 3, 3, CRGB::Yellow); // OK: Yellow
+        } else {
+            fill_solid(leds + 3, 3, CRGB::Green);  // Wet: Green
+        }
+
+        FastLED.show();
     }
 }
 
@@ -462,7 +503,13 @@ void handleRoot() {
 
     // Format the values for display
     String temperatureString = String(temperature, 1) + " °C"; // Format temperature
-    String co2String = String(currentCO2) + " ppm"; // Format CO2 level
+    
+    // Calculate moisture percentage for display
+    float moisturePercent = 0;
+    if (dryValue != wetValue) {
+        moisturePercent = ((float)(dryValue - moistureValue) / (float)(dryValue - wetValue)) * 100;
+        moisturePercent = constrain(moisturePercent, 0, 100);
+    }
 
     // Generate the HTML content
     String htmlContent = R"rawliteral(
@@ -507,7 +554,7 @@ void handleRoot() {
                     margin: 10px 0 5px;
                     font-weight: bold;
                 }
-                input[type="text"] {
+                input[type="text"], input[type="number"] {
                     width: 100%;
                     padding: 10px;
                     margin-bottom: 15px;
@@ -524,6 +571,7 @@ void handleRoot() {
                     cursor: pointer;
                     font-size: 16px;
                     width: 100%;
+                    margin-bottom: 10px;
                 }
                 input[type="submit"]:hover {
                     background-color: #0056b3;
@@ -545,7 +593,17 @@ void handleRoot() {
             <div class="container">
                 <h1>Snowflake Lamp</h1>
                 <p><b>Local temperature: )rawliteral" + temperatureString + R"rawliteral(</b></p>
-                <p><b>CO2 Level in ppm: )rawliteral" + String(currentCO2) + R"rawliteral(</b></p>
+                <p><b>Soil Moisture: )rawliteral" + String(moisturePercent, 1) + R"rawliteral(% (Raw: )rawliteral" + String(moistureValue) + R"rawliteral()</b></p>
+                
+                <h2>Soil Moisture Calibration</h2>
+                <form action="/calibration" method="post">
+                    <label for="dryValue">Dry Value (sensor in dry soil):</label>
+                    <input type="number" id="dryValue" name="dryValue" value=")rawliteral" + String(dryValue) + R"rawliteral(">
+                    <label for="wetValue">Wet Value (sensor in wet soil):</label>
+                    <input type="number" id="wetValue" name="wetValue" value=")rawliteral" + String(wetValue) + R"rawliteral(">
+                    <input type="submit" value="Save Calibration">
+                </form>
+                
                 <h2>Whamageddon warning - Mix Megapol</h2>
                 <p>Playing now: )rawliteral" + currentSongTitle + R"rawliteral(</p>
                 <p>Warning for: )rawliteral" + storedSongTitle + R"rawliteral(</p>
@@ -590,22 +648,24 @@ void setup() {
 
     EEPROM.begin(512);
 
+    // Load calibration values from EEPROM
+    dryValue = readDryValueFromEEPROM();
+    wetValue = readWetValueFromEEPROM();
+    Serial.print("Loaded dry value: ");
+    Serial.println(dryValue);
+    Serial.print("Loaded wet value: ");
+    Serial.println(wetValue);
+
     server.on("/", HTTP_GET, handleRoot);  // Handle GET requests to '/'
     server.on("/setSongTitle", HTTP_POST, handleSetSongTitle);  // Handle POST requests to '/setSongTitle'
+    server.on("/calibration", HTTP_POST, handleCalibration);  // Handle calibration form
 
     ElegantOTA.begin(&server);
     server.begin();
     Serial.println("Web server started");
 
-    Wire1.begin(CO2_SDA, CO2_SCL);
-    if (!scd4x.begin(Wire1)) {
-        Serial.println("Failed to initialize SCD4x sensor on custom I2C pins.");
-    } else {
-        Serial.println("SCD4x sensor initialized successfully");
-        scd4x.stopPeriodicMeasurement();
-        scd4x.setSensorAltitude(0); // Adjust altitude if necessary
-        scd4x.startPeriodicMeasurement();
-    }
+    Wire1.begin(OLED_SDA, OLED_SCL);
+    Serial.println("Moisture sensor initialized on GPIO 32");
 
     NimBLEDevice::init("");
     pBLEScan = NimBLEDevice::getScan();
@@ -660,7 +720,7 @@ void loop() {
             FastLED.show();
             displayCenteredText("OFF", 2, 15);
         } else {
-            handleCO2LEDs();
+            handleMoistureLEDs();
         }
     }
 
