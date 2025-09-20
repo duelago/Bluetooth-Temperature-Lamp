@@ -2,6 +2,7 @@
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <SparkFun_SCD4x_Arduino_Library.h>
 #include <NimBLEDevice.h>
 #include <WiFiManager.h>
 #include <WebServer.h>
@@ -11,7 +12,6 @@
 #include <EEPROM.h>  
 
 #define SONG_TITLE_ADDRESS 0
-#define MOISTURE_SENSOR_PIN 32  // GPIO32 (ADC1_CH4)
 
 #define OLED_RESET -1
 #define NUM_LEDS 6
@@ -20,20 +20,24 @@
 #define OLED_SDA 21
 #define OLED_SCL 22
 
+#define CO2_SDA 17
+#define CO2_SCL 16
+
 WebServer server(80);
 
 CRGB leds[NUM_LEDS];
 Adafruit_SSD1306 display(OLED_RESET);
+SCD4x scd4x(SCD4x_SENSOR_SCD40);
 
 // Set the interval for all sensor checks to 45 seconds (45,000 milliseconds)
-unsigned long previousMoistureCheckMillis = 0;
+unsigned long previousCO2CheckMillis = 0;
 unsigned long previousTitleCheckMillis = 0;
-unsigned long previousTemperatureUpdateMillis = 0;
+unsigned long previousTemperatureUpdateMillis = 0; // Add a variable to track temperature update time
 const unsigned long sensorCheckInterval = 45000; // 45 seconds (45,000 milliseconds)
 
 const char* apiUrl = "https://listenapi.planetradio.co.uk/api9.2/nowplaying/mme";
 
-unsigned long previousMillis = 0; // Stores the last time BLE scan was triggered
+unsigned long previousBLEMillis = 0; // Stores the last time BLE scan was triggered
 const unsigned long scanInterval = 10000; // Time between BLE scans (e.g., 10 seconds)
 
 const char* apiHost = "api.holfuy.com";
@@ -42,27 +46,66 @@ const char* apiHost = "api.holfuy.com";
 const unsigned long updateInterval = 45000;  // 45 seconds in milliseconds
 
 float temperature = 0.0;
-float windSpeed = 0.0;
 bool hasReceivedReading = false;
 const std::string targetMacAddress = "38:1f:8d:97:bd:5d";
 
+//bool blockLEDUpdates = false; // Flag to block other LED updates
 // Global flag to control LED behavior
 bool isBlinking = false;
-
-// Moisture sensor variables
-int moistureValue = 0;
-int moisturePercent = 0;
-
-// Moisture sensor calibration values (adjust these based on your sensor)
-const int dryValue = 3000;    // Value when sensor is in dry air
-const int wetValue = 1000;    // Value when sensor is in water
 
 NimBLEScan* pBLEScan;
 const int scanTime = 5;
 
+// CO2 sensor thresholds and variables
+int co2High = 1300;
+int co2Low = 1200;
+uint16_t currentCO2 = 0;
+bool isCO2High = false;
+
+// Function prototypes
+void displayCenteredText(String text, int textSize, int yPosition);
+void setTemperatureLEDColor(float roundedTemperature);
+void setTemperatureLEDColorHolfuy(float roundedTemperature);
+void handleCO2LEDs();
+void blinkRedGreen(int duration);
+void blinkRedLEDs();
+void decodeServiceData(const std::string& payload);
+void checkWiFiConnection();
+uint16_t decodeLittleEndianU16(uint8_t lowByte, uint8_t highByte);
+
+// WiFi reconnection function
+void checkWiFiConnection() {
+    if (WiFi.status() != WL_CONNECTED) {
+        Serial.println("WiFi disconnected. Attempting to reconnect...");
+        WiFi.disconnect();
+        delay(1000);
+        
+        // Try to reconnect
+        WiFi.begin();
+        
+        int attempts = 0;
+        while (WiFi.status() != WL_CONNECTED && attempts < 20) {
+            delay(500);
+            Serial.print(".");
+            attempts++;
+        }
+        
+        if (WiFi.status() == WL_CONNECTED) {
+            Serial.println();
+            Serial.print("WiFi reconnected! IP: ");
+            Serial.println(WiFi.localIP());
+            Serial.print("Signal strength (RSSI): ");
+            Serial.println(WiFi.RSSI());
+        } else {
+            Serial.println();
+            Serial.println("Failed to reconnect to WiFi");
+        }
+    }
+}
+
 void blinkRedGreen(int duration) {
     unsigned long start = millis();
-    unsigned long previousMillis = 0;
+    unsigned long prevBlinkMillis = 0;
     int interval = 999; // Blink interval in milliseconds
     bool isRedOnLed4 = true; // Start with LED 4 as red
 
@@ -70,8 +113,8 @@ void blinkRedGreen(int duration) {
         unsigned long currentMillis = millis();
 
         // Check if it's time to toggle the color
-        if (currentMillis - previousMillis >= interval) {
-            previousMillis = currentMillis; // Save the current time
+        if (currentMillis - prevBlinkMillis >= interval) {
+            prevBlinkMillis = currentMillis; // Save the current time
 
             if (isRedOnLed4) {
                 leds[4] = CRGB::Cyan;   // Set LED at index 4 to red
@@ -121,34 +164,71 @@ void handleSetSongTitle() {
 
 // Function to make an HTTP request and parse JSON with retry and timeout settings
 String getSongTitle() {
+    // Check and reconnect WiFi if needed
+    checkWiFiConnection();
+    
+    if (WiFi.status() != WL_CONNECTED) {
+        Serial.println("WiFi still not connected, cannot fetch song title");
+        return "WiFi disconnected";
+    }
+    
+    Serial.println("Attempting to connect to: " + String(apiUrl));
+    
     HTTPClient http;
-    http.begin(apiUrl);
+    
+    // Configure HTTP client with timeouts
+    http.setTimeout(10000); // 10 second timeout
+    http.setConnectTimeout(5000); // 5 second connection timeout
+    http.setReuse(false); // Don't reuse connections
+    
+    // Add headers
+    http.addHeader("User-Agent", "ESP32-Snowflake/1.0");
+    http.addHeader("Accept", "application/json");
+    
+    if (!http.begin(apiUrl)) {
+        Serial.println("HTTP begin failed");
+        return "HTTP begin error";
+    }
+    
     int httpResponseCode = http.GET();
+    Serial.print("HTTP Response Code: ");
+    Serial.println(httpResponseCode);
 
     if (httpResponseCode > 0) {
         String payload = http.getString();
-        Serial.println("HTTP Response: " + payload);
+        Serial.println("HTTP Response received, length: " + String(payload.length()));
+        
+        if (payload.length() > 0) {
+            Serial.println("HTTP Response: " + payload.substring(0, min(200, (int)payload.length()))); // Show first 200 chars
 
-        // Parse JSON
-        StaticJsonDocument<1024> doc;
-        DeserializationError error = deserializeJson(doc, payload);
+            // Parse JSON
+            StaticJsonDocument<1024> doc;
+            DeserializationError error = deserializeJson(doc, payload);
 
-        if (error) {
-            Serial.print("JSON Deserialization failed: ");
-            Serial.println(error.f_str());
-            return "Error parsing JSON";
+            if (error) {
+                Serial.print("JSON Deserialization failed: ");
+                Serial.println(error.f_str());
+                http.end();
+                return "Error parsing JSON";
+            }
+
+            // Extract the song title from the JSON response
+            const char* songTitle = doc["TrackTitle"];
+            http.end();
+            return songTitle ? String(songTitle) : "No song data";
+        } else {
+            Serial.println("Empty response received");
+            http.end();
+            return "Empty response";
         }
-
-        // Extract the song title from the JSON response
-        // Adjusted to match the correct JSON structure
-        const char* songTitle = doc["TrackTitle"];
-        return songTitle ? String(songTitle) : "No song data";
     } else {
         Serial.print("HTTP GET request failed, error: ");
         Serial.println(http.errorToString(httpResponseCode).c_str());
+        Serial.print("WiFi status: ");
+        Serial.println(WiFi.status());
+        http.end();
         return "HTTP error";
     }
-    http.end();
 }
 
 // Function to compare two strings case-insensitively
@@ -162,26 +242,6 @@ bool caseInsensitiveCompare(const char* str1, const char* str2) {
     }
     return *str1 == *str2;
 }
-
-// Callback class to handle BLE advertisements
-class MyAdvertisedDeviceCallbacks : public NimBLEAdvertisedDeviceCallbacks {
-    void onResult(NimBLEAdvertisedDevice* advertisedDevice) {
-        if (caseInsensitiveCompare(advertisedDevice->getAddress().toString().c_str(), targetMacAddress.c_str())) {
-            if (advertisedDevice->haveServiceData()) {
-                decodeServiceData(advertisedDevice->getServiceData());
-            } else {
-                Serial.println("No service data available.");
-            }
-        }
-    }
-};
-
-// Function prototypes
-void displayCenteredText(String text, int textSize, int yPosition);
-void setTemperatureLEDColor(float roundedTemperature);
-void handleMoistureLEDs();
-void blinkRedGreen(int duration);
-uint16_t decodeLittleEndianU16(uint8_t lowByte, uint8_t highByte);  // Function prototype
 
 // Helper function to decode a little-endian 16-bit unsigned integer
 uint16_t decodeLittleEndianU16(uint8_t lowByte, uint8_t highByte) {
@@ -205,6 +265,19 @@ void decodeServiceData(const std::string& payload) {
     }
 }
 
+// Callback class to handle BLE advertisements
+class MyAdvertisedDeviceCallbacks : public NimBLEAdvertisedDeviceCallbacks {
+    void onResult(NimBLEAdvertisedDevice* advertisedDevice) {
+        if (caseInsensitiveCompare(advertisedDevice->getAddress().toString().c_str(), targetMacAddress.c_str())) {
+            if (advertisedDevice->haveServiceData()) {
+                decodeServiceData(advertisedDevice->getServiceData());
+            } else {
+                Serial.println("No service data available.");
+            }
+        }
+    }
+};
+
 // Function to display centered text on the OLED screen
 void displayCenteredText(String text, int textSize, int yPosition) {
     display.clearDisplay();
@@ -223,52 +296,103 @@ void displayCenteredText(String text, int textSize, int yPosition) {
     display.display();
 }
 
-void updateWind() {
+void updateTemperature() {
+    // Check and reconnect WiFi if needed
+    checkWiFiConnection();
+    
+    if (WiFi.status() != WL_CONNECTED) {
+        Serial.println("WiFi still not connected, cannot fetch temperature");
+        return;
+    }
+    
     HTTPClient client;
+    String url = "https://api.holfuy.com/live/?s=214&pw=correcthorsebatterystaple&m=JSON&tu=C&su=m/s";
+    
+    Serial.println("Attempting to connect to Holfuy API: " + url);
+    
+    // Configure HTTP client with timeouts
+    client.setTimeout(10000); // 10 second timeout
+    client.setConnectTimeout(5000); // 5 second connection timeout
+    client.setReuse(false); // Don't reuse connections
+    
+    // Add headers
+    client.addHeader("User-Agent", "ESP32-Snowflake/1.0");
+    client.addHeader("Accept", "application/json");
 
-    if (!client.begin("https://api.holfuy.com/live/?s=214&pw=correcthorsebatterystaple&m=JSON&tu=C&su=m/s")) {
-        Serial.println(F("Connection failed"));
+    // Begin the HTTP request to the API
+    if (!client.begin(url)) {
+        Serial.println(F("Holfuy API connection failed"));
         return;
     }
 
+    // Send the HTTP GET request
     int httpCode = client.GET();
+    Serial.print("Holfuy HTTP Response Code: ");
+    Serial.println(httpCode);
 
+    // Check if the GET request was successful
     if (httpCode > 0) {
-        String payload = client.getString();
-        Serial.println("Response: " + payload);
+        String payload = client.getString();  // Get the response payload
+        
+        // Print the response to the Serial monitor
+        Serial.println("Holfuy Response length: " + String(payload.length()));
+        if (payload.length() > 0) {
+            Serial.println("Holfuy Response: " + payload.substring(0, min(200, (int)payload.length())));
 
-        StaticJsonDocument<512> doc;
-        DeserializationError error = deserializeJson(doc, payload);
+            // Parse the JSON response
+            StaticJsonDocument<384> doc;
+            DeserializationError error = deserializeJson(doc, payload);
 
-        if (!error) {
-            float speed = doc["wind"]["speed"];
-            Serial.print("Wind Speed: ");
-            Serial.println(speed);
-            windSpeed = speed;
-            int roundedSpeed = round(speed);
-            setWindLEDColor(roundedSpeed);
+            if (!error) {
+                // Successfully parsed the JSON, get the temperature
+                float temp = doc["temperature"];
+                Serial.print("Temp Holfuy: ");
+                Serial.println(temp);
+
+                // Round the temperature and print
+                int roundedTemperature = round(temp);
+                Serial.print("Rounded Temp: ");
+                Serial.println(roundedTemperature);
+
+                // Set the LED color based on the temperature
+                setTemperatureLEDColorHolfuy(roundedTemperature);
+                temperature = roundedTemperature;  // Store the temperature
+            } else {
+                // Handle JSON parsing error
+                Serial.print(F("JSON deserialization failed: "));
+                Serial.println(error.f_str());
+            }
         } else {
-            Serial.print(F("JSON deserialization failed: "));
-            Serial.println(error.f_str());
+            Serial.println("Empty response from Holfuy API");
         }
     } else {
-        Serial.println("HTTP request failed, error code: " + String(httpCode));
+        // If the GET request failed
+        Serial.println("Holfuy HTTP request failed, error code: " + String(httpCode));
+        Serial.print("WiFi status: ");
+        Serial.println(WiFi.status());
     }
 
+    // Close the connection
     client.end();
 }
 
-void setWindLEDColor(float speed) {
-    // scale 0 - 25 m/s
-    if (speed < 0) speed = 0;
-    if (speed > 25) speed = 25;
+void setTemperatureLEDColorHolfuy(float roundedTemperature) {
+    if (roundedTemperature >= -50 && roundedTemperature < -5) {
+        fill_solid(leds + 2, 2, 0xFF44DD);  // Pink, start from index 2 and cover 2 LEDs
+    } else if (roundedTemperature >= -5 && roundedTemperature < 0) {
+        fill_solid(leds + 2, 2, 0x0006FF);  // Blue
+    } else if (roundedTemperature >= 0 && roundedTemperature <= 5) {
+        fill_solid(leds + 2, 2, 0x00FF06);  // Green
+    } else if (roundedTemperature > 5 && roundedTemperature <= 10) {
+        fill_solid(leds + 2, 2, 0xFFF600);  // Yellow
+    } else if (roundedTemperature > 10 && roundedTemperature <= 15) {
+        fill_solid(leds + 2, 2, 0xFFA500);  // Orange
+    } else if (roundedTemperature > 15 && roundedTemperature <= 20) {
+        fill_solid(leds + 2, 2, 0xFF0000);  // Red
+    } else if (roundedTemperature > 20 && roundedTemperature <= 45) {
+        fill_solid(leds + 2, 2, 0x800080);  // Purple
+    }
 
-    if (speed >= 0 && speed <= 3) fill_solid(leds, 2, 0x00FF06);  // Green
-    else if (speed > 3 && speed <= 6) fill_solid(leds, 2, 0xFFF600); // Yellow
-    else if (speed > 6 && speed <= 10) fill_solid(leds, 2, 0xFFA500); // Orange
-    else if (speed > 10 && speed <= 15) fill_solid(leds, 2, 0xFF0000); // Red
-    else if (speed > 15 && speed <= 20) fill_solid(leds, 2, 0x800080); // Purple
-    else if (speed > 20) fill_solid(leds, 2, 0xFF44DD); // Pink
     FastLED.show();
 }
 
@@ -295,47 +419,39 @@ void setTemperatureLEDColor(float roundedTemperature) {
     FastLED.show();
 }
 
-// Function to read moisture sensor and update LEDs
-void handleMoistureLEDs() {
+void handleCO2LEDs() {
     unsigned long currentMillis = millis();
     
-    // Check if 45 seconds have passed since the last moisture check
-    if (currentMillis - previousMoistureCheckMillis >= sensorCheckInterval) {
-        previousMoistureCheckMillis = currentMillis;  // Update the last check time
+    // Check if 45 seconds have passed since the last CO2 check
+    if (currentMillis - previousCO2CheckMillis >= sensorCheckInterval) {
+        previousCO2CheckMillis = currentMillis;  // Update the last check time
 
-        // Read the moisture sensor (12-bit ADC, 0-4095)
-        moistureValue = analogRead(MOISTURE_SENSOR_PIN);
-        
-        // Convert to percentage (0-100%)
-        moisturePercent = map(moistureValue, dryValue, wetValue, 0, 100);
-        moisturePercent = constrain(moisturePercent, 0, 100);
-        
-        Serial.print("Moisture Raw Value: ");
-        Serial.println(moistureValue);
-        Serial.print("Moisture Percentage: ");
-        Serial.print(moisturePercent);
-        Serial.println("%");
+        Serial.println("Reading CO2 sensor...");
+        if (scd4x.readMeasurement()) {
+            currentCO2 = scd4x.getCO2();
+            Serial.print("CO2 Level: ");
+            Serial.println(currentCO2);
 
-        // Handle Moisture LED updates for the last two LEDs (indices 4 and 5)
-        if (moisturePercent >= 70) {
-            fill_solid(leds + 4, 2, CRGB::Green);   // Wet: >= 70%, Green
-        } else if (moisturePercent >= 40 && moisturePercent < 70) {
-            fill_solid(leds + 4, 2, CRGB::Yellow);  // OK: 40-69%, Yellow
+            // Handle CO2 LED updates for the last two LEDs
+            if (currentCO2 <= 650) {
+                fill_solid(leds + 4, 2, CRGB::Green);  // CO2: <= 650 ppm, Green
+            } else if (currentCO2 > 650 && currentCO2 <= 800) {
+                fill_solid(leds + 4, 2, CRGB::Yellow); // CO2: 651 - 800 ppm, Yellow
+            } else if (currentCO2 > 800 && currentCO2 <= 1000) {
+                fill_solid(leds + 4, 2, CRGB::Orange); // CO2: 801 - 1000 ppm, Orange
+            } else if (currentCO2 > 1000 && currentCO2 <= 1200) {
+                fill_solid(leds + 4, 2, CRGB::Red);    // CO2: 1001 - 1200 ppm, Red
+            } else if (currentCO2 > 1200 && currentCO2 <= 1299) {
+                fill_solid(leds + 4, 2, CRGB::Purple); // CO2: 1201 - 1299 ppm, Purple
+            } else {
+                blinkRedGreen(20000);
+            }
+
+            FastLED.show();
         } else {
-            fill_solid(leds + 4, 2, CRGB::Red);     // Dry: < 40%, Red - needs watering
+            Serial.println("Failed to read CO2 sensor - I2C communication error");
+            // Don't change LED state if sensor read fails
         }
-
-        FastLED.show();
-    }
-}
-
-// Function to update temperature (placeholder - this seems to be missing from original)
-void updateTemperature() {
-    // This function was called but not defined in the original code
-    // It appears to be intended for updating temperature display
-    if (hasReceivedReading) {
-        setTemperatureLEDColor(round(temperature));
-        displayCenteredText(String((int)round(temperature)), 2, 15);
     }
 }
 
@@ -346,7 +462,7 @@ void handleRoot() {
 
     // Format the values for display
     String temperatureString = String(temperature, 1) + " °C"; // Format temperature
-    String moistureString = String(moisturePercent) + "%"; // Format moisture percentage
+    String co2String = String(currentCO2) + " ppm"; // Format CO2 level
 
     // Generate the HTML content
     String htmlContent = R"rawliteral(
@@ -429,7 +545,7 @@ void handleRoot() {
             <div class="container">
                 <h1>Snowflake Lamp</h1>
                 <p><b>Local temperature: )rawliteral" + temperatureString + R"rawliteral(</b></p>
-                <p><b>Soil Moisture Level: )rawliteral" + moistureString + R"rawliteral(</b></p>
+                <p><b>CO2 Level in ppm: )rawliteral" + String(currentCO2) + R"rawliteral(</b></p>
                 <h2>Whamageddon warning - Mix Megapol</h2>
                 <p>Playing now: )rawliteral" + currentSongTitle + R"rawliteral(</p>
                 <p>Warning for: )rawliteral" + storedSongTitle + R"rawliteral(</p>
@@ -450,10 +566,22 @@ void handleRoot() {
 
 void setup() {
     Serial.begin(115200);
+    Serial.println("Starting Snowflake device...");
+    
+    // Initialize WiFi
     WiFiManager wifiManager;
+    Serial.println("Connecting to WiFi...");
     wifiManager.autoConnect("Snowflake");
+    
+    Serial.print("WiFi connected! IP address: ");
+    Serial.println(WiFi.localIP());
+    Serial.print("Signal strength (RSSI): ");
+    Serial.println(WiFi.RSSI());
+    
     Wire.begin(OLED_SDA, OLED_SCL);
-    display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+    
+    display.begin(SSD1306_SWITCHCAPVCC, 0x3C, true);
+    display.setRotation(0);
     display.clearDisplay();
     
     FastLED.addLeds<WS2811, DATA_PIN, RGB>(leds, NUM_LEDS);
@@ -462,16 +590,22 @@ void setup() {
 
     EEPROM.begin(512);
 
-    // Initialize moisture sensor pin
-    pinMode(MOISTURE_SENSOR_PIN, INPUT);
-
     server.on("/", HTTP_GET, handleRoot);  // Handle GET requests to '/'
     server.on("/setSongTitle", HTTP_POST, handleSetSongTitle);  // Handle POST requests to '/setSongTitle'
 
     ElegantOTA.begin(&server);
     server.begin();
+    Serial.println("Web server started");
 
-    // Remove CO2 sensor initialization - no longer needed
+    Wire1.begin(CO2_SDA, CO2_SCL);
+    if (!scd4x.begin(Wire1)) {
+        Serial.println("Failed to initialize SCD4x sensor on custom I2C pins.");
+    } else {
+        Serial.println("SCD4x sensor initialized successfully");
+        scd4x.stopPeriodicMeasurement();
+        scd4x.setSensorAltitude(0); // Adjust altitude if necessary
+        scd4x.startPeriodicMeasurement();
+    }
 
     NimBLEDevice::init("");
     pBLEScan = NimBLEDevice::getScan();
@@ -479,13 +613,25 @@ void setup() {
     pBLEScan->setInterval(100);
     pBLEScan->setWindow(99);
     pBLEScan->setActiveScan(true);
+    Serial.println("BLE scan initialized");
 
     // Display "HEJ" on boot
     displayCenteredText("HEJ", 2, 15);
+    Serial.println("Setup completed");
 }
 
 void loop() {
     unsigned long currentMillis = millis();
+
+    // Check WiFi connection periodically
+    static unsigned long lastWiFiCheck = 0;
+    if (currentMillis - lastWiFiCheck >= 30000) { // Check every 30 seconds
+        lastWiFiCheck = currentMillis;
+        if (WiFi.status() != WL_CONNECTED) {
+            Serial.println("WiFi disconnected in main loop");
+            checkWiFiConnection();
+        }
+    }
 
     // Set unified sensor check interval to 45 seconds (45,000 milliseconds)
     if (currentMillis - previousTitleCheckMillis >= sensorCheckInterval) {
@@ -508,19 +654,19 @@ void loop() {
         // Blink the LEDs red continuously if the flag is set
         blinkRedLEDs();
     } else {
-        // Normal LED handling and moisture display when not blinking
+        // Normal LED handling and CO2 display when not blinking
         if (!hasReceivedReading) {
             fill_solid(leds, NUM_LEDS, CRGB::White);
             FastLED.show();
             displayCenteredText("OFF", 2, 15);
         } else {
-            handleMoistureLEDs();
+            handleCO2LEDs();
         }
     }
 
     // Existing BLE scan logic
-    if (currentMillis - previousMillis >= scanInterval) {
-        previousMillis = currentMillis;
+    if (currentMillis - previousBLEMillis >= scanInterval) {
+        previousBLEMillis = currentMillis;
         pBLEScan->start(scanTime, false);
         Serial.println("Scanning...");
     }
