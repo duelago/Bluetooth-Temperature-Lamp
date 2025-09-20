@@ -31,7 +31,7 @@ Adafruit_SSD1306 display(OLED_RESET);
 // Set the interval for all sensor checks to 45 seconds (45,000 milliseconds)
 unsigned long previousMoistureCheckMillis = 0;
 unsigned long previousTitleCheckMillis = 0;
-unsigned long previousTemperatureUpdateMillis = 0; // Add a variable to track temperature update time
+unsigned long previousWindUpdateMillis = 0; // Add a variable to track wind update time
 const unsigned long sensorCheckInterval = 45000; // 45 seconds (45,000 milliseconds)
 
 const char* apiUrl = "https://listenapi.planetradio.co.uk/api9.2/nowplaying/mme";
@@ -45,6 +45,7 @@ const char* apiHost = "api.holfuy.com";
 const unsigned long updateInterval = 45000;  // 45 seconds in milliseconds
 
 float temperature = 0.0;
+float windSpeed = 0.0;
 bool hasReceivedReading = false;
 const std::string targetMacAddress = "38:1f:8d:97:bd:5d";
 
@@ -63,7 +64,7 @@ const int scanTime = 5;
 // Function prototypes
 void displayCenteredText(String text, int textSize, int yPosition);
 void setTemperatureLEDColor(float roundedTemperature);
-void setTemperatureLEDColorHolfuy(float roundedTemperature);
+void setWindSpeedLEDColor(float windSpeed);
 void handleMoistureLEDs();
 void blinkRedGreen(int duration);
 void blinkRedLEDs();
@@ -334,19 +335,19 @@ void displayCenteredText(String text, int textSize, int yPosition) {
     display.display();
 }
 
-void updateTemperature() {
+void updateWindSpeed() {
     // Check and reconnect WiFi if needed
     checkWiFiConnection();
     
     if (WiFi.status() != WL_CONNECTED) {
-        Serial.println("WiFi still not connected, cannot fetch temperature");
+        Serial.println("WiFi still not connected, cannot fetch wind speed");
         return;
     }
     
     HTTPClient client;
     String url = "https://api.holfuy.com/live/?s=214&pw=correcthorsebatterystaple&m=JSON&tu=C&su=m/s";
     
-    Serial.println("Attempting to connect to Holfuy API: " + url);
+    Serial.println("Attempting to connect to Holfuy API for wind data: " + url);
     
     // Configure HTTP client with timeouts
     client.setTimeout(10000); // 10 second timeout
@@ -378,23 +379,19 @@ void updateTemperature() {
             Serial.println("Holfuy Response: " + payload.substring(0, min(200, (int)payload.length())));
 
             // Parse the JSON response
-            StaticJsonDocument<384> doc;
+            StaticJsonDocument<512> doc;
             DeserializationError error = deserializeJson(doc, payload);
 
             if (!error) {
-                // Successfully parsed the JSON, get the temperature
-                float temp = doc["temperature"];
-                Serial.print("Temp Holfuy: ");
-                Serial.println(temp);
+                // Successfully parsed the JSON, get the wind speed
+                float speed = doc["wind"]["speed"];
+                Serial.print("Wind Speed Holfuy: ");
+                Serial.print(speed);
+                Serial.println(" m/s");
 
-                // Round the temperature and print
-                int roundedTemperature = round(temp);
-                Serial.print("Rounded Temp: ");
-                Serial.println(roundedTemperature);
-
-                // Set the LED color based on the temperature
-                setTemperatureLEDColorHolfuy(roundedTemperature);
-                temperature = roundedTemperature;  // Store the temperature
+                // Set the LED color based on the wind speed
+                setWindSpeedLEDColor(speed);
+                windSpeed = speed;  // Store the wind speed
             } else {
                 // Handle JSON parsing error
                 Serial.print(F("JSON deserialization failed: "));
@@ -414,21 +411,22 @@ void updateTemperature() {
     client.end();
 }
 
-void setTemperatureLEDColorHolfuy(float roundedTemperature) {
-    if (roundedTemperature >= -50 && roundedTemperature < -5) {
-        fill_solid(leds + 2, 2, 0xFF44DD);  // Pink, start from index 2 and cover 2 LEDs
-    } else if (roundedTemperature >= -5 && roundedTemperature < 0) {
-        fill_solid(leds + 2, 2, 0x0006FF);  // Blue
-    } else if (roundedTemperature >= 0 && roundedTemperature <= 5) {
-        fill_solid(leds + 2, 2, 0x00FF06);  // Green
-    } else if (roundedTemperature > 5 && roundedTemperature <= 10) {
-        fill_solid(leds + 2, 2, 0xFFF600);  // Yellow
-    } else if (roundedTemperature > 10 && roundedTemperature <= 15) {
-        fill_solid(leds + 2, 2, 0xFFA500);  // Orange
-    } else if (roundedTemperature > 15 && roundedTemperature <= 20) {
-        fill_solid(leds + 2, 2, 0xFF0000);  // Red
-    } else if (roundedTemperature > 20 && roundedTemperature <= 45) {
-        fill_solid(leds + 2, 2, 0x800080);  // Purple
+void setWindSpeedLEDColor(float windSpeed) {
+    // LEDs at index 2 and 3 for wind speed (0-25+ m/s scale)
+    if (windSpeed >= 0 && windSpeed < 3) {
+        fill_solid(leds + 2, 2, 0xFF44DD);  // Pink (0-3 m/s)
+    } else if (windSpeed >= 3 && windSpeed < 6) {
+        fill_solid(leds + 2, 2, 0x0006FF);  // Blue (3-6 m/s)
+    } else if (windSpeed >= 6 && windSpeed <= 9) {
+        fill_solid(leds + 2, 2, 0x00FF06);  // Green (6-9 m/s)
+    } else if (windSpeed > 9 && windSpeed <= 12) {
+        fill_solid(leds + 2, 2, 0xFFF600);  // Yellow (9-12 m/s)
+    } else if (windSpeed > 12 && windSpeed <= 18) {
+        fill_solid(leds + 2, 2, 0xFFA500);  // Orange (12-18 m/s)
+    } else if (windSpeed > 18 && windSpeed <= 22) {
+        fill_solid(leds + 2, 2, 0xFF0000);  // Red (18-22 m/s)
+    } else if (windSpeed > 22) {
+        fill_solid(leds + 2, 2, 0x800080);  // Purple (22+ m/s)
     }
 
     FastLED.show();
@@ -503,6 +501,7 @@ void handleRoot() {
 
     // Format the values for display
     String temperatureString = String(temperature, 1) + " °C"; // Format temperature
+    String windSpeedString = String(windSpeed, 1) + " m/s"; // Format wind speed
     
     // Calculate moisture percentage for display
     float moisturePercent = 0;
@@ -592,7 +591,8 @@ void handleRoot() {
         <body>
             <div class="container">
                 <h1>Snowflake Lamp</h1>
-                <p><b>Local temperature: )rawliteral" + temperatureString + R"rawliteral(</b></p>
+                <p><b>BLE temperature: )rawliteral" + temperatureString + R"rawliteral(</b></p>
+                <p><b>Wind Speed: )rawliteral" + windSpeedString + R"rawliteral(</b></p>
                 <p><b>Soil Moisture: )rawliteral" + String(moisturePercent, 1) + R"rawliteral(% (Raw: )rawliteral" + String(moistureValue) + R"rawliteral()</b></p>
                 
                 <h2>Soil Moisture Calibration</h2>
@@ -731,10 +731,10 @@ void loop() {
         Serial.println("Scanning...");
     }
 
-    // Update temperature every 45 seconds
-    if (currentMillis - previousTemperatureUpdateMillis >= sensorCheckInterval) {
-        previousTemperatureUpdateMillis = currentMillis;
-        updateTemperature(); // Update temperature every 45 seconds
+    // Update wind speed every 45 seconds
+    if (currentMillis - previousWindUpdateMillis >= sensorCheckInterval) {
+        previousWindUpdateMillis = currentMillis;
+        updateWindSpeed(); // Update wind speed every 45 seconds
     }
 
     // Handle OTA updates and web server requests
