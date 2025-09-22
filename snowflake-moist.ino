@@ -14,7 +14,11 @@
 #define DRY_VALUE_ADDRESS 50
 #define WET_VALUE_ADDRESS 54
 
+// OLED Display definitions  
+#define SCREEN_WIDTH 64
+#define SCREEN_HEIGHT 48
 #define OLED_RESET -1
+
 #define NUM_LEDS 6
 #define DATA_PIN 4
 
@@ -26,6 +30,7 @@
 WebServer server(80);
 
 CRGB leds[NUM_LEDS];
+// Fixed display declaration for older library
 Adafruit_SSD1306 display(OLED_RESET);
 
 // Set the interval for all sensor checks to 45 seconds (45,000 milliseconds)
@@ -71,6 +76,7 @@ void blinkRedLEDs();
 void decodeServiceData(const std::string& payload);
 void checkWiFiConnection();
 uint16_t decodeLittleEndianU16(uint8_t lowByte, uint8_t highByte);
+void testDisplay();
 
 // WiFi reconnection function
 void checkWiFiConnection() {
@@ -300,7 +306,7 @@ void decodeServiceData(const std::string& payload) {
 
         // Update display and LED color
         setTemperatureLEDColor(round(temperature));
-        displayCenteredText(String((int)round(temperature)), 2, 15);
+        displayCenteredText(String((int)round(temperature)), 2, 32);
     }
 }
 
@@ -317,22 +323,55 @@ class MyAdvertisedDeviceCallbacks : public NimBLEAdvertisedDeviceCallbacks {
     }
 };
 
-// Function to display centered text on the OLED screen
+// FIXED: Function to display centered text on the OLED screen
 void displayCenteredText(String text, int textSize, int yPosition) {
     display.clearDisplay();
     display.setTextSize(textSize);
-    display.setTextColor(WHITE);
-
-    int16_t x1, y1;
-    uint16_t width, height;
-    display.getTextBounds(text, 0, 0, &x1, &y1, &width, &height);
-
-    int xPosition = (display.width() - width) / 2;
-    int adjustedYPosition = 32;  // Adjusted Y position to start on the third row
-
-    display.setCursor(xPosition, adjustedYPosition);
+    display.setTextColor(WHITE, BLACK);
+    display.setTextWrap(false);
+    
+    // For 64x48 display - much smaller calculations needed
+    int charWidth = 6 * textSize;  // Each character width including spacing
+    int charHeight = 8 * textSize; // Each character height
+    
+    int textWidth = text.length() * charWidth;
+    
+    // Center horizontally on 64-pixel wide screen
+    int xPosition = (SCREEN_WIDTH - textWidth) / 2;
+    
+    // For 48-pixel tall screen, adjust Y positioning
+    int finalYPosition = yPosition;
+    if (yPosition == -1) {
+        // Center vertically
+        finalYPosition = (SCREEN_HEIGHT - charHeight) / 2;
+    }
+    
+    // Bounds checking for small screen
+    if (xPosition < 0) xPosition = 0;
+    if (xPosition + textWidth > SCREEN_WIDTH) xPosition = SCREEN_WIDTH - textWidth;
+    if (xPosition < 0) xPosition = 0; // If text is too wide, align left
+    
+    if (finalYPosition < 0) finalYPosition = 0;
+    if (finalYPosition + charHeight > SCREEN_HEIGHT) finalYPosition = SCREEN_HEIGHT - charHeight;
+    
+    display.setCursor(xPosition, finalYPosition);
     display.print(text);
     display.display();
+    
+    Serial.print("64x48 Display - Text: '");
+    Serial.print(text);
+    Serial.print("' Size: ");
+    Serial.print(textSize);
+    Serial.print(" Pos: (");
+    Serial.print(xPosition);
+    Serial.print(",");
+    Serial.print(finalYPosition);
+    Serial.print(") TextWidth: ");
+    Serial.print(textWidth);
+    Serial.print(" Screen: ");
+    Serial.print(SCREEN_WIDTH);
+    Serial.print("x");
+    Serial.println(SCREEN_HEIGHT);
 }
 
 void updateWindSpeed() {
@@ -622,6 +661,7 @@ void handleRoot() {
     server.send(200, "text/html", htmlContent);
 }
 
+// FIXED: setup function with improved OLED initialization
 void setup() {
     Serial.begin(115200);
     Serial.println("Starting Snowflake device...");
@@ -636,11 +676,48 @@ void setup() {
     Serial.print("Signal strength (RSSI): ");
     Serial.println(WiFi.RSSI());
     
+    // Initialize I2C with explicit pins
     Wire.begin(OLED_SDA, OLED_SCL);
+    Serial.println("I2C initialized");
     
-    display.begin(SSD1306_SWITCHCAPVCC, 0x3C, true);
-    display.setRotation(0);
+    // Scan for I2C devices (debugging)
+    Serial.println("Scanning for I2C devices...");
+    byte error, address;
+    int nDevices = 0;
+    for(address = 1; address < 127; address++) {
+        Wire.beginTransmission(address);
+        error = Wire.endTransmission();
+        if (error == 0) {
+            Serial.print("I2C device found at address 0x");
+            if (address < 16) Serial.print("0");
+            Serial.println(address, HEX);
+            nDevices++;
+        }
+    }
+    if (nDevices == 0) {
+        Serial.println("No I2C devices found");
+    }
+    
+    // Initialize display with error checking for older library
+    display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+    Serial.println("SSD1306 initialized");
+    
+    // Clear display and set initial state
     display.clearDisplay();
+    display.setRotation(0);
+    display.display(); // Show cleared display
+    
+    delay(1000); // Give display time to initialize
+    
+    // Test display with simple text
+    Serial.println("Testing display...");
+    display.clearDisplay();
+    display.setTextSize(1);
+    display.setTextColor(WHITE);
+    display.setCursor(0, 0);
+    display.print("Kasewood");
+    display.display();
+    delay(2000);
     
     FastLED.addLeds<WS2811, DATA_PIN, RGB>(leds, NUM_LEDS);
     FastLED.setBrightness(200);
@@ -664,7 +741,6 @@ void setup() {
     server.begin();
     Serial.println("Web server started");
 
-    Wire1.begin(OLED_SDA, OLED_SCL);
     Serial.println("Moisture sensor initialized on GPIO 32");
 
     NimBLEDevice::init("");
@@ -675,8 +751,9 @@ void setup() {
     pBLEScan->setActiveScan(true);
     Serial.println("BLE scan initialized");
 
-    // Display "HEJ" on boot
-    displayCenteredText("HEJ", 2, 15);
+    // Display "HEJ" on boot with better error handling
+    Serial.println("Displaying HEJ...");
+    displayCenteredText("HEJ", 2, 32);
     Serial.println("Setup completed");
 }
 
@@ -714,11 +791,11 @@ void loop() {
         // Blink the LEDs red continuously if the flag is set
         blinkRedLEDs();
     } else {
-        // Normal LED handling and CO2 display when not blinking
+        // Normal LED handling and temperature display when not blinking
         if (!hasReceivedReading) {
             fill_solid(leds, NUM_LEDS, CRGB::White);
             FastLED.show();
-            displayCenteredText("OFF", 2, 15);
+            displayCenteredText("OFF", 2, 32);
         } else {
             handleMoistureLEDs();
         }
@@ -759,4 +836,35 @@ void blinkRedLEDs() {
         }
         FastLED.show();
     }
+}
+
+// Debug function to test display functionality
+void testDisplay() {
+    Serial.println("Running display test sequence...");
+    
+    // Test 1: Clear display
+    display.clearDisplay();
+    display.display();
+    delay(500);
+    
+    // Test 2: Single pixel
+    display.clearDisplay();
+    display.drawPixel(64, 32, WHITE);
+    display.display();
+    delay(1000);
+    
+    // Test 3: Simple text
+    display.clearDisplay();
+    display.setTextSize(1);
+    display.setTextColor(WHITE);
+    display.setCursor(0, 0);
+    display.print("Kasewood");
+    display.display();
+    delay(2000);
+    
+    // Test 4: Centered large text
+    displayCenteredText("OK", 3, 20);
+    delay(2000);
+    
+    Serial.println("Display test sequence completed");
 }
