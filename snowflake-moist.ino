@@ -77,6 +77,7 @@ void decodeServiceData(const std::string& payload);
 void checkWiFiConnection();
 uint16_t decodeLittleEndianU16(uint8_t lowByte, uint8_t highByte);
 void testDisplay();
+void testLEDs();
 
 // WiFi reconnection function
 void checkWiFiConnection() {
@@ -661,10 +662,53 @@ void handleRoot() {
     server.send(200, "text/html", htmlContent);
 }
 
-// FIXED: setup function with improved OLED initialization
+// LED test function
+void testLEDs() {
+    Serial.println("Testing LEDs - all red for 3 seconds");
+    fill_solid(leds, NUM_LEDS, CRGB::Red);
+    FastLED.show();
+    delay(3000);
+
+    Serial.println("Testing LEDs - all green for 3 seconds");
+    fill_solid(leds, NUM_LEDS, CRGB::Green);
+    FastLED.show();
+    delay(3000);
+
+    Serial.println("Testing LEDs - all blue for 3 seconds");
+    fill_solid(leds, NUM_LEDS, CRGB::Blue);
+    FastLED.show();
+    delay(3000);
+
+    Serial.println("Testing individual LEDs");
+    for(int i = 0; i < NUM_LEDS; i++) {
+        fill_solid(leds, NUM_LEDS, CRGB::Black); // Turn all off
+        leds[i] = CRGB::White; // Turn on one LED
+        FastLED.show();
+        Serial.print("LED ");
+        Serial.print(i);
+        Serial.println(" on");
+        delay(1000);
+    }
+
+    Serial.println("Turning off all LEDs");
+    fill_solid(leds, NUM_LEDS, CRGB::Black);
+    FastLED.show();
+}
+
+// FIXED: setup function with improved OLED initialization and LED testing
 void setup() {
     Serial.begin(115200);
     Serial.println("Starting Snowflake device...");
+    
+    // Initialize FastLED first with proper settings for WS2812D-F5
+     FastLED.addLeds<WS2812, DATA_PIN, GRB>(leds, NUM_LEDS);
+    //FastLED.addLeds<WS2812, DATA_PIN, RGB>(leds, NUM_LEDS);
+    FastLED.setBrightness(60); // Start with lower brightness for testing
+    FastLED.setMaxPowerInVoltsAndMilliamps(5, 500); // Comment out for testing
+    Serial.println("FastLED initialized");
+    
+    // Test LEDs immediately
+    testLEDs();
     
     // Initialize WiFi
     WiFiManager wifiManager;
@@ -715,13 +759,9 @@ void setup() {
     display.setTextSize(1);
     display.setTextColor(WHITE);
     display.setCursor(0, 0);
-    display.print("Kasewood");
+    display.print(" Kasewood");
     display.display();
     delay(2000);
-    
-    FastLED.addLeds<WS2811, DATA_PIN, RGB>(leds, NUM_LEDS);
-    FastLED.setBrightness(200);
-    FastLED.setMaxPowerInVoltsAndMilliamps(5, 500);  // Limit power to 5V and 500 mA
 
     EEPROM.begin(512);
 
@@ -858,7 +898,7 @@ void testDisplay() {
     display.setTextSize(1);
     display.setTextColor(WHITE);
     display.setCursor(0, 0);
-    display.print("Kasewood");
+    display.print(" Kasewood");
     display.display();
     delay(2000);
     
