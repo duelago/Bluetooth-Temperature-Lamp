@@ -44,9 +44,19 @@
 #define SONG_TITLE_ADDRESS 0
 #define SONG_TITLE_MAX_LEN 32            // inkl. avslutande '\0'
 
+// Nattläge i EEPROM (efter låttiteln)
+#define NIGHT_MAGIC_ADDRESS   32
+#define NIGHT_START_ADDRESS   33         // uint16, minuter efter midnatt
+#define NIGHT_END_ADDRESS     35         // uint16
+#define NIGHT_ENABLED_ADDRESS 37
+#define NIGHT_MAGIC           0xA5
+
+const char* timeZone = "CET-1CEST,M3.5.0,M10.5.0/3";  // svensk/österrikisk tid med sommartid
+const uint8_t normalBrightness = 200;
+
 const char* hostName  = "snowflake";     // http://snowflake.local
 const char* songApiUrl = "https://listenapi.planetradio.co.uk/api9.2/nowplaying/mme";
-const char* holfuyUrl  = "https://api.holfuy.com/live/?s=214&pw=correcthorsebatterystaple&m=JSON&tu=C&su=m/s";
+const char* holfuyUrl  = "https://api.holfuy.com/live/?s=214&pw=PASSWORD&m=JSON&tu=C&su=m/s";
 
 const std::string targetMacAddress = "34:ec:b6:65:16:fb";   // BTH01 (pvvx BTHome)
 
@@ -90,6 +100,12 @@ uint16_t currentCO2 = 0;
 bool     hasCO2Reading = false;
 bool     co2Alarm = false;
 
+// Nattläge (standard: släckt 20:20–06:30)
+bool     nightEnabled = true;
+uint16_t nightStartMin = 20 * 60 + 20;
+uint16_t nightEndMin   = 6 * 60 + 30;
+bool     isNight = false;
+
 String lastSongTitle = "–";   // cache för webbsidan
 bool   isBlinking = false;    // Whamageddon pågår
 
@@ -130,6 +146,10 @@ const CO2Band co2Bands[] = {
 // ---------------------------------------------------------------------------
 void displayCenteredText(const String& text, int textSize, int yPosition) {
     display.clearDisplay();
+    if (isNight) {            // nattläge: håll skärmen svart
+        display.display();
+        return;
+    }
     display.setTextSize(textSize);
     display.setTextColor(WHITE);
 
@@ -257,6 +277,76 @@ String readSongTitleFromEEPROM() {
         songTitle += c;
     }
     return songTitle;
+}
+
+// ---------------------------------------------------------------------------
+// Nattläge
+// ---------------------------------------------------------------------------
+uint16_t readU16(int addr) { return EEPROM.read(addr) | (EEPROM.read(addr + 1) << 8); }
+void writeU16(int addr, uint16_t v) { EEPROM.write(addr, v & 0xFF); EEPROM.write(addr + 1, v >> 8); }
+
+void loadNightSettings() {
+    if (EEPROM.read(NIGHT_MAGIC_ADDRESS) != NIGHT_MAGIC) return;   // aldrig sparat: behåll standard
+    uint16_t s = readU16(NIGHT_START_ADDRESS);
+    uint16_t e = readU16(NIGHT_END_ADDRESS);
+    if (s < 1440) nightStartMin = s;
+    if (e < 1440) nightEndMin = e;
+    nightEnabled = EEPROM.read(NIGHT_ENABLED_ADDRESS) == 1;
+}
+
+void saveNightSettings() {
+    EEPROM.write(NIGHT_MAGIC_ADDRESS, NIGHT_MAGIC);
+    writeU16(NIGHT_START_ADDRESS, nightStartMin);
+    writeU16(NIGHT_END_ADDRESS, nightEndMin);
+    EEPROM.write(NIGHT_ENABLED_ADDRESS, nightEnabled ? 1 : 0);
+    EEPROM.commit();
+}
+
+String minutesToHHMM(uint16_t m) {
+    char buf[6];
+    snprintf(buf, sizeof(buf), "%02u:%02u", m / 60, m % 60);
+    return String(buf);
+}
+
+// "HH:MM" -> minuter, eller -1 vid fel
+int parseHHMM(const String& s) {
+    int colon = s.indexOf(':');
+    if (colon < 1) return -1;
+    int h = s.substring(0, colon).toInt();
+    int m = s.substring(colon + 1).toInt();
+    if (h < 0 || h > 23 || m < 0 || m > 59) return -1;
+    return h * 60 + m;
+}
+
+// Är det natt just nu? Utan giltig tid (NTP ej synkad) räknas det som dag.
+bool computeNight() {
+    if (!nightEnabled || nightStartMin == nightEndMin) return false;
+    struct tm t;
+    if (!getLocalTime(&t, 0)) return false;
+    uint16_t now = t.tm_hour * 60 + t.tm_min;
+    if (nightStartMin > nightEndMin) {          // över midnatt, t.ex. 20:20–06:30
+        return now >= nightStartMin || now < nightEndMin;
+    }
+    return now >= nightStartMin && now < nightEndMin;
+}
+
+void renderNormal();   // framåtdeklaration
+
+// Släcker eller tänder lampan när natten börjar eller slutar
+void updateNightMode() {
+    bool night = computeNight();
+    if (night == isNight) return;
+    isNight = night;
+    if (isNight) {
+        Serial.println(F("Nattläge: släcker"));
+        FastLED.setBrightness(0);    // all LED-uppdatering blir svart
+        FastLED.show();
+        displayCenteredText("", 1, 0);
+    } else {
+        Serial.println(F("Nattläge slut: tänder"));
+        FastLED.setBrightness(normalBrightness);
+        renderNormal();
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -511,6 +601,20 @@ void handleSetSongTitle() {
     server.send(303);
 }
 
+void handleSetNight() {
+    nightEnabled = server.hasArg("nightEnabled");
+    int s = parseHHMM(server.arg("nightStart"));
+    int e = parseHHMM(server.arg("nightEnd"));
+    if (s >= 0) nightStartMin = s;
+    if (e >= 0) nightEndMin = e;
+    saveNightSettings();
+    Serial.printf("Nattläge: %s, %s–%s\n", nightEnabled ? "på" : "av",
+                  minutesToHHMM(nightStartMin).c_str(), minutesToHHMM(nightEndMin).c_str());
+    updateNightMode();   // gäller direkt
+    server.sendHeader("Location", "/");
+    server.send(303);
+}
+
 void handleRoot() {
     String storedSongTitle = readSongTitleFromEEPROM();
     String temperatureString = hasBleReading ? String((float)bleTemperature, 1) + " °C" : "–";
@@ -529,7 +633,8 @@ h1{color:#007bff;text-align:center}
 p{margin:10px 0}
 .container{max-width:600px;width:100%;background:#fff;padding:20px;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.1);box-sizing:border-box}
 label{display:block;margin:10px 0 5px;font-weight:bold}
-input[type=text]{width:100%;padding:10px;margin-bottom:15px;border:1px solid #ccc;border-radius:5px;box-sizing:border-box}
+input[type=checkbox]{width:auto;margin-right:8px}
+input[type=text],input[type=time]{width:100%;padding:10px;margin-bottom:15px;border:1px solid #ccc;border-radius:5px;box-sizing:border-box}
 input[type=submit]{background:#007bff;color:#fff;border:none;padding:10px 20px;border-radius:5px;cursor:pointer;font-size:16px;width:100%}
 input[type=submit]:hover{background:#0056b3}
 a{display:block;text-align:center;margin-top:20px;color:#007bff;text-decoration:none;font-weight:bold}
@@ -556,7 +661,26 @@ a:hover{color:#0056b3}
               "<label for=\"songTitle\">Set Song Title (max 31 tecken):</label>\n"
               "<input type=\"text\" id=\"songTitle\" name=\"songTitle\" maxlength=\"31\" value=\"");
     html += htmlEscape(storedSongTitle);
-    html += F("\">\n<input type=\"submit\" value=\"Save\">\n</form>\n"
+    html += F("\">\n<input type=\"submit\" value=\"Save\">\n</form>\n");
+
+    // Nattläge
+    struct tm t;
+    String clock = getLocalTime(&t, 0) ? minutesToHHMM(t.tm_hour * 60 + t.tm_min) : String("okänd (ingen NTP än)");
+    html += F("<h2>Nattläge</h2>\n<p>Klockan är ");
+    html += clock;
+    html += F(". Lampan är ");
+    html += isNight ? F("<b>släckt (natt)</b>") : F("<b>tänd</b>");
+    html += F(".</p>\n<form action=\"/setNight\" method=\"post\">\n"
+              "<label><input type=\"checkbox\" name=\"nightEnabled\" value=\"1\"");
+    if (nightEnabled) html += F(" checked");
+    html += F("> Släck lampan på natten</label>\n"
+              "<label for=\"nightStart\">Släck klockan:</label>\n"
+              "<input type=\"time\" id=\"nightStart\" name=\"nightStart\" value=\"");
+    html += minutesToHHMM(nightStartMin);
+    html += F("\">\n<label for=\"nightEnd\">Tänd klockan:</label>\n"
+              "<input type=\"time\" id=\"nightEnd\" name=\"nightEnd\" value=\"");
+    html += minutesToHHMM(nightEndMin);
+    html += F("\">\n<input type=\"submit\" value=\"Spara nattläge\">\n</form>\n"
               "<a href=\"/update\">Update Firmware</a>\n</div>\n</body>\n</html>\n");
 
     server.send(200, "text/html", html);
@@ -590,11 +714,12 @@ void setup() {
     displayCenteredText("HEJ", 2, TEXT_Y);
 
     FastLED.addLeds<WS2811, DATA_PIN, RGB>(leds, NUM_LEDS);
-    FastLED.setBrightness(200);
+    FastLED.setBrightness(normalBrightness);
     FastLED.setMaxPowerInVoltsAndMilliamps(5, 500);
     FastLED.clear(true);
 
     EEPROM.begin(512);
+    loadNightSettings();
 
     // WiFi: portalen stängs efter 3 min så att lampan fungerar offline
     WiFiManager wifiManager;
@@ -608,12 +733,16 @@ void setup() {
     WiFi.setAutoReconnect(true);
     displayCenteredText("HEJ", 2, TEXT_Y);
 
+    // NTP-tid för nattläget (synkas i bakgrunden)
+    configTzTime(timeZone, "pool.ntp.org", "time.google.com");
+
     if (MDNS.begin(hostName)) {
         MDNS.addService("http", "tcp", 80);
     }
 
     server.on("/", HTTP_GET, handleRoot);
     server.on("/setSongTitle", HTTP_POST, handleSetSongTitle);
+    server.on("/setNight", HTTP_POST, handleSetNight);
     ElegantOTA.begin(&server);
     server.begin();
 
@@ -654,6 +783,13 @@ void loop() {
     unsigned long now = millis();
 
     maintainWiFi();
+
+    // Nattläge: kolla en gång per sekund
+    static unsigned long lastNightCheck = 0;
+    if (now - lastNightCheck >= 1000) {
+        lastNightCheck = now;
+        updateNightMode();
+    }
 
     // Whamageddon-koll (oftare medan låten spelas)
     unsigned long titleInterval = isBlinking ? songCheckIntervalBlinking : sensorCheckInterval;
