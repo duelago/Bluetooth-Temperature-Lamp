@@ -667,31 +667,31 @@ a:hover{color:#0056b3}
     html += F("</p>\n<p>Warning for: ");
     html += htmlEscape(storedSongTitle);
     html += F("</p>\n");
-    if (isBlinking) html += F("<p class=\"alert\">Låten spelas just nu!</p>\n");
+    if (isBlinking) html += F("<p class=\"alert\">The song is playing right now!</p>\n");
     html += F("<form action=\"/setSongTitle\" method=\"post\">\n"
-              "<label for=\"songTitle\">Set Song Title (max 31 tecken):</label>\n"
+              "<label for=\"songTitle\">Set Song Title (max 31 characters):</label>\n"
               "<input type=\"text\" id=\"songTitle\" name=\"songTitle\" maxlength=\"31\" value=\"");
     html += htmlEscape(storedSongTitle);
     html += F("\">\n<input type=\"submit\" value=\"Save\">\n</form>\n");
 
     // Nattläge
     struct tm t;
-    String clock = getLocalTime(&t, 0) ? minutesToHHMM(t.tm_hour * 60 + t.tm_min) : String("okänd (ingen NTP än)");
-    html += F("<h2>Nattläge</h2>\n<p>Klockan är ");
+    String clock = getLocalTime(&t, 0) ? minutesToHHMM(t.tm_hour * 60 + t.tm_min) : String("unknown (no NTP yet)");
+    html += F("<h2>Night mode</h2>\n<p>Current time: ");
     html += clock;
-    html += F(". Lampan är ");
-    html += isNight ? F("<b>släckt (natt)</b>") : F("<b>tänd</b>");
+    html += F(". The lamp is ");
+    html += isNight ? F("<b>off (night)</b>") : F("<b>on</b>");
     html += F(".</p>\n<form action=\"/setNight\" method=\"post\">\n"
               "<label><input type=\"checkbox\" name=\"nightEnabled\" value=\"1\"");
     if (nightEnabled) html += F(" checked");
-    html += F("> Släck lampan på natten</label>\n"
-              "<label for=\"nightStart\">Släck klockan:</label>\n"
+    html += F("> Turn the lamp off at night</label>\n"
+              "<label for=\"nightStart\">Turn off at:</label>\n"
               "<input type=\"time\" id=\"nightStart\" name=\"nightStart\" value=\"");
     html += minutesToHHMM(nightStartMin);
-    html += F("\">\n<label for=\"nightEnd\">Tänd klockan:</label>\n"
+    html += F("\">\n<label for=\"nightEnd\">Turn on at:</label>\n"
               "<input type=\"time\" id=\"nightEnd\" name=\"nightEnd\" value=\"");
     html += minutesToHHMM(nightEndMin);
-    html += F("\">\n<input type=\"submit\" value=\"Spara nattläge\">\n</form>\n"
+    html += F("\">\n<input type=\"submit\" value=\"Save night mode\">\n</form>\n"
               "<a href=\"/update\">Update Firmware</a>\n</div>\n</body>\n</html>\n");
 
     server.send(200, "text/html", html);
