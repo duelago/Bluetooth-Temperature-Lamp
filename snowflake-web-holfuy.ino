@@ -12,6 +12,8 @@
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <Fonts/FreeSansBold18pt7b.h>   // stora siffror
+#include <Fonts/FreeSansBold12pt7b.h>   // reserv när texten inte får plats
 #include <SparkFun_SCD4x_Arduino_Library.h>
 #include <NimBLEDevice.h>
 #include <WiFi.h>
@@ -150,18 +152,27 @@ void displayCenteredText(const String& text, int textSize, int yPosition) {
         display.display();
         return;
     }
-    display.setTextSize(textSize);
+    // Stort proportionellt typsnitt; textSize/yPosition används inte längre.
+    // Får texten inte plats i 18pt används 12pt, och sist standardtypsnittet.
+    const GFXfont* fonts[] = { &FreeSansBold18pt7b, &FreeSansBold12pt7b, nullptr };
+    display.setTextSize(1);
     display.setTextColor(WHITE);
+    display.setTextWrap(false);
 
     int16_t x1, y1;
     uint16_t width, height;
-    display.getTextBounds(text, 0, 0, &x1, &y1, &width, &height);
+    for (const GFXfont* f : fonts) {
+        display.setFont(f);
+        display.getTextBounds(text, 0, 0, &x1, &y1, &width, &height);
+        if (width <= display.width() && height <= display.height()) break;
+    }
 
-    // Centrera både horisontellt och vertikalt (yPosition används inte längre)
+    // Centrera både horisontellt och vertikalt (fungerar även med baslinje-typsnitt)
     display.setCursor((display.width() - width) / 2 - x1,
                       (display.height() - height) / 2 - y1);
     display.print(text);
     display.display();
+    display.setFont(nullptr);   // återställ, så att t.ex. IP-visningen får standardtypsnittet
 }
 
 // Visar IP-adressen på två rader (64x48-skärmen rymmer inte hela på en rad)
