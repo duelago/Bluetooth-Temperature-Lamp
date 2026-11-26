@@ -144,6 +144,37 @@ void displayCenteredText(const String& text, int textSize, int yPosition) {
     display.display();
 }
 
+// Visar IP-adressen på två rader (64x48-skärmen rymmer inte hela på en rad)
+void displayIP() {
+    display.clearDisplay();
+    display.setTextSize(1);
+    display.setTextColor(WHITE);
+
+    String lines[3];
+    if (WiFi.status() == WL_CONNECTED) {
+        IPAddress ip = WiFi.localIP();
+        lines[0] = "IP:";
+        lines[1] = String(ip[0]) + "." + String(ip[1]) + ".";
+        lines[2] = String(ip[2]) + "." + String(ip[3]);
+    } else {
+        lines[0] = "";
+        lines[1] = "Ingen";
+        lines[2] = "WiFi";
+    }
+
+    const int lineHeight = 12;
+    int y = (display.height() - 3 * lineHeight) / 2;
+    for (const String& line : lines) {
+        int16_t x1, y1;
+        uint16_t w, h;
+        display.getTextBounds(line, 0, 0, &x1, &y1, &w, &h);
+        display.setCursor((display.width() - w) / 2 - x1, y);
+        display.print(line);
+        y += lineHeight;
+    }
+    display.display();
+}
+
 String htmlEscape(const String& in) {
     String out;
     out.reserve(in.length() + 8);
@@ -271,29 +302,26 @@ void blinkRedLEDs() {
 }
 
 // Ritar alla LED:ar och displayen från senast kända värden
+// Varje LED-par visar sin egen källa. Saknas data lyser paret vitt.
+// En trasig BLE-givare påverkar alltså bara LED 0-1 och displayen.
 void renderNormal() {
-    fill_solid(leds, NUM_LEDS, CRGB::Black);
     if (hasBleReading)    setTempLEDs(0, bleTemperature);
+    else                  fill_solid(leds, 2, CRGB::White);
     if (hasHolfuyReading) setTempLEDs(2, holfuyTemperature);
+    else                  fill_solid(leds + 2, 2, CRGB::White);
     if (hasCO2Reading)    setCO2LEDs(currentCO2);
+    else                  fill_solid(leds + 4, 2, CRGB::White);
     FastLED.show();
-    if (hasBleReading) displayCenteredText(String((int)round(bleTemperature)), 2, TEXT_Y);
+    displayCenteredText(hasBleReading ? String((int)round(bleTemperature)) : String("OFF"), 2, TEXT_Y);
 }
 
-void renderOff() {
-    co2Alarm = false;
-    fill_solid(leds, NUM_LEDS, CRGB::White);
-    FastLED.show();
-    displayCenteredText("OFF", 2, TEXT_Y);
-}
-
-// Byter mellan OFF och normalläge, men ritar bara om när läget ändras
+// Ritar om när BLE-givaren kommer eller försvinner
 void updateDisplayMode() {
     DisplayMode wanted = hasBleReading ? MODE_NORMAL : MODE_OFF;
     if (wanted == displayMode) return;
     displayMode = wanted;
     if (isBlinking) return;   // ritas om när Whamageddon är slut
-    if (wanted == MODE_OFF) renderOff(); else renderNormal();
+    renderNormal();
 }
 
 // ---------------------------------------------------------------------------
@@ -305,7 +333,7 @@ void checkCO2() {
     hasCO2Reading = true;
     Serial.printf("CO2 Level: %u ppm\n", currentCO2);
 
-    if (isBlinking || displayMode != MODE_NORMAL) return;
+    if (isBlinking) return;
     setCO2LEDs(currentCO2);
     FastLED.show();
 }
@@ -322,7 +350,7 @@ void updateHolfuyTemperature() {
     hasHolfuyReading = true;
     Serial.printf("Temp Holfuy: %.1f\n", holfuyTemperature);
 
-    if (isBlinking || displayMode != MODE_NORMAL) return;
+    if (isBlinking) return;
     setTempLEDs(2, holfuyTemperature);
     FastLED.show();
 }
@@ -357,7 +385,7 @@ void checkSong() {
     } else if (!match && isBlinking) {
         isBlinking = false;
         Serial.println(F("Låten är slut, tillbaka till normalläge."));
-        if (displayMode == MODE_OFF) renderOff(); else renderNormal();
+        renderNormal();
     }
 }
 
@@ -608,6 +636,12 @@ void setup() {
     pBLEScan->setActiveScan(false);   // BTHome sänder allt i vanlig annonsering; passivt stör WiFi mindre
     pBLEScan->setMaxResults(0);                          // spara inga resultat, bara callback
 
+    // Visa IP-adressen i 5 s innan lampan går igång
+    displayIP();
+    Serial.print(F("IP: "));
+    Serial.println(WiFi.localIP());
+    delay(5000);
+
     // Gör första koll direkt i stället för efter 45 s
     unsigned long now = millis();
     previousCO2CheckMillis   = now - sensorCheckInterval;
@@ -644,7 +678,7 @@ void loop() {
     // LED-animationer
     if (isBlinking) {
         blinkRedLEDs();
-    } else if (displayMode == MODE_NORMAL) {
+    } else {
         updateCO2Alarm();
     }
 
